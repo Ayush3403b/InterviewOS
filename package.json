@@ -1,0 +1,23 @@
+{
+  "name": "interviewos",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "apps/*",
+    "services/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace web\" \"npm run dev --workspace api\"",
+    "web": "npm run dev --workspace web",
+    "api": "npm run dev --workspace api",
+    "build": "npm run build --workspaces"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  }
+}
