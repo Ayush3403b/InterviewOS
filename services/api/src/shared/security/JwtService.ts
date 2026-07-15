@@ -1,28 +1,34 @@
-import jwt, { Secret, SignOptions, JwtPayload } from "jsonwebtoken";
+import jwt, { Secret, SignOptions } from "jsonwebtoken";
 
 import { env } from "../../config/env";
 
+import { TokenPayload } from "./TokenPayload";
+
 export class JwtService {
   /**
-   * Generate Access Token
+   * Generate JWT Access Token
    */
   public static generateAccessToken(
-    payload: object
+    payload: Omit<TokenPayload, "iat" | "exp">
   ): string {
-    return jwt.sign(payload, env.JWT_SECRET as Secret, {
-      expiresIn: env.JWT_EXPIRES_IN,
-    } as SignOptions);
+    return jwt.sign(
+      payload,
+      env.JWT_SECRET as Secret,
+      {
+        expiresIn: env.JWT_EXPIRES_IN,
+      } as SignOptions
+    );
   }
 
   /**
-   * Verify Access Token
+   * Verify JWT Access Token
    */
   public static verifyAccessToken(
     token: string
-  ): JwtPayload | string {
+  ): TokenPayload {
     return jwt.verify(
       token,
       env.JWT_SECRET as Secret
-    );
+    ) as TokenPayload;
   }
 }

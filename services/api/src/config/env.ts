@@ -24,4 +24,14 @@ export const env = {
   JWT_EXPIRES_IN: required("JWT_EXPIRES_IN"),
 
   CLIENT_URL: required("CLIENT_URL"),
+
+  SMTP_HOST: required("SMTP_HOST"),
+
+  SMTP_PORT: Number(required("SMTP_PORT")),
+
+  SMTP_USER: required("SMTP_USER"),
+
+  SMTP_PASS: required("SMTP_PASS"),
+
+  MAIL_FROM: required("MAIL_FROM"),
 };

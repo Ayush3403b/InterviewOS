@@ -36,6 +36,19 @@ class AuthController extends BaseController {
       result
     );
   };
+
+  public forgotPassword = async (
+    req: Request,
+    res: Response
+  ): Promise<Response> => {
+
+    await this.authService.forgotPassword(req.body);
+
+    return this.ok(
+      res,
+      "If an account exists, a password reset email has been sent."
+    );
+  };
 }
 
 export default AuthController;

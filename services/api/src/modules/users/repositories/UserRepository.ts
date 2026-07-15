@@ -23,11 +23,75 @@ export class UserRepository extends BaseRepository<UserDocument> {
     return this.model.create(data);
   }
 
+  public async findById(id: string) {
+    return this.model.findById(id).select("-password");
+  }
+
+  public async findByIdWithPassword(
+    id: string
+  ): Promise<UserDocument | null> {
+    return this.model.findById(id);
+  }
+
   public async updateLastLogin(userId: string) {
     return this.model.findByIdAndUpdate(
       userId,
       {
         lastLoginAt: new Date(),
+      },
+      {
+        new: true,
+      }
+    );
+  }
+
+  public async updateProfile(
+    userId: string,
+    data: {
+      firstName?: string;
+      lastName?: string;
+      avatar?: string;
+      organizationId?: string;
+      profileCompleted?: boolean;
+    }
+  ) {
+    return this.model.findByIdAndUpdate(
+      userId,
+      data,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+  }
+
+  public async updatePassword(
+    userId: string,
+    hashedPassword: string
+  ): Promise<UserDocument | null> {
+
+    return this.model.findByIdAndUpdate(
+      userId,
+      {
+        password: hashedPassword,
+      },
+      {
+        new: true,
+      }
+    );
+  }
+
+  public async updatePasswordResetToken(
+    userId: string,
+    token: string,
+    expiresAt: Date
+  ): Promise<UserDocument | null> {
+
+    return this.model.findByIdAndUpdate(
+      userId,
+      {
+        passwordResetToken: token,
+        passwordResetExpiresAt: expiresAt,
       },
       {
         new: true,

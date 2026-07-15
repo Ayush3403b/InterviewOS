@@ -30,6 +30,10 @@ export interface UserDocument extends Document {
   createdAt: Date;
 
   updatedAt: Date;
+
+  passwordResetToken?: string;
+
+  passwordResetExpiresAt?: Date;
 }
 
 const UserSchema = new Schema<UserDocument>(
@@ -96,6 +100,14 @@ const UserSchema = new Schema<UserDocument>(
     },
 
     lastLoginAt: {
+      type: Date,
+    },
+
+    passwordResetToken: {
+      type: String,
+    },
+
+    passwordResetExpiresAt: {
       type: Date,
     },
   },

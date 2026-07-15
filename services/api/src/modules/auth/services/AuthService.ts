@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-
+import crypto from "crypto";
 import { ErrorCode } from "../../../shared/errors/ErrorCode";
 
 import { BaseService } from "../../../shared/services/BaseService";
@@ -22,10 +22,22 @@ import { LoginResponseMapper } from "../responses/LoginResponseMapper";
 
 import { JwtService } from "../../../shared/security/JwtService";
 
+import { EmailService } from "../../../shared/mail";
+
+import { env } from "../../../config/env";
+
+import { ForgotPasswordDto } from "../dtos/ForgotPassword.dto";
+
+import { TokenService } from "../../../shared/security/TokenService";
+
+import { TokenPolicy } from "../../../shared/security/TokenPolicy";
+
+import { ForgotPasswordTemplate } from "../../../shared/mail/templates/ForgotPasswordTemplate";
 
 export class AuthService extends BaseService<UserService> {
   constructor(
-      userService: UserService
+      userService: UserService,
+      private readonly emailService: EmailService
   ) {
       super(userService);
   }
@@ -93,7 +105,8 @@ export class AuthService extends BaseService<UserService> {
     );
 
     // Generate JWT
-    const accessToken = JwtService.generateAccessToken({
+  const accessToken =
+    JwtService.generateAccessToken({
       sub: user.id,
       role: user.role,
     });
@@ -102,5 +115,65 @@ export class AuthService extends BaseService<UserService> {
     updatedUser ?? user,
     accessToken
   );
+  }
+
+  public async forgotPassword(
+    data: ForgotPasswordDto
+  ): Promise<void> {
+
+    // Find user
+    const user =
+      await this.repository.getUserByEmail(
+        data.email
+      );
+
+    // Prevent user enumeration
+    if (!user) {
+      return;
+    }
+
+    // Generate raw token
+    const token =
+      TokenService.generate();
+
+    // Hash token before storing
+    const hashedToken =
+      crypto
+        .createHash("sha256")
+        .update(token)
+        .digest("hex");
+
+    // Expiry
+    const expiresAt =
+      new Date(
+        Date.now() +
+        TokenPolicy.PASSWORD_RESET_EXPIRY_MINUTES *
+        60 *
+        1000
+      );
+
+    // Save hash
+    await this.repository.savePasswordResetToken(
+      user.id,
+      hashedToken,
+      expiresAt
+    );
+
+    // Build reset URL
+    const resetLink =
+      `${env.CLIENT_URL}/reset-password?token=${token}`;
+
+    // Generate HTML
+    const html =
+      ForgotPasswordTemplate(
+        resetLink
+      );
+
+    // Send email
+    await this.emailService.sendMail({
+      to: user.email,
+      subject: "Reset your InterviewOS password",
+      html,
+    });
   }
 }
