@@ -98,4 +98,122 @@ export class UserRepository extends BaseRepository<UserDocument> {
       }
     );
   }
+
+  public async findByPasswordResetToken(
+    token: string
+  ): Promise<UserDocument | null> {
+
+    return this.model.findOne({
+      passwordResetToken: token,
+    });
+  }
+
+  public async clearPasswordResetToken(
+    userId: string
+  ): Promise<UserDocument | null> {
+
+    return this.model.findByIdAndUpdate(
+      userId,
+      {
+        $unset: {
+          passwordResetToken: "",
+          passwordResetExpiresAt: "",
+        },
+      },
+      {
+        new: true,
+      }
+    );
+  }
+
+  public async resetPassword(
+    userId: string,
+    hashedPassword: string
+  ): Promise<UserDocument | null> {
+
+    return this.model.findByIdAndUpdate(
+      userId,
+      {
+        $set: {
+          password: hashedPassword,
+        },
+        $unset: {
+          passwordResetToken: "",
+          passwordResetExpiresAt: "",
+        },
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+  }
+  /**
+ * Save email verification token
+ */
+  public async saveEmailVerificationToken(
+    userId: string,
+    tokenHash: string,
+    expiresAt: Date
+  ) {
+    return this.model.findByIdAndUpdate(
+      userId,
+      {
+        emailVerificationToken: tokenHash,
+        emailVerificationExpiresAt: expiresAt,
+      },
+      {
+        new: true,
+      }
+    );
+  }
+
+  /**
+   * Find user by email verification token
+   */
+  public async getUserByEmailVerificationToken(
+    tokenHash: string
+  ) {
+    return this.model.findOne({
+      emailVerificationToken: tokenHash,
+    });
+  }
+
+  /**
+   * Mark email as verified
+   */
+  public async markEmailVerified(
+    userId: string
+  ) {
+    return this.model.findByIdAndUpdate(
+      userId,
+      {
+        isEmailVerified: true,
+        emailVerifiedAt: new Date(),
+      },
+      {
+        new: true,
+      }
+    );
+  }
+
+  /**
+   * Clear email verification token
+   */
+  public async clearEmailVerificationToken(
+    userId: string
+  ) {
+    return this.model.findByIdAndUpdate(
+      userId,
+      {
+        $unset: {
+          emailVerificationToken: "",
+          emailVerificationExpiresAt: "",
+        },
+      },
+      {
+        new: true,
+      }
+    );
+  }  
 }

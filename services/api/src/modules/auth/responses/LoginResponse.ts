@@ -16,4 +16,6 @@ export interface LoginResponse {
 
     isEmailVerified: boolean;
   };
+
+  refreshToken: string;
 }

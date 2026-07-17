@@ -10,7 +10,7 @@ import { ProfilePolicy } from "../domain/ProfilePolicy";
 
 import { ProfileCompletion } from "../domain/ProfileCompletion";
 
-import bcrypt from "bcryptjs";
+import { PasswordService } from "../../../shared/security/PasswordService";
 
 import { ChangePasswordDto } from "../dtos/ChangePassword.dto";
 
@@ -99,7 +99,7 @@ export class UserService extends BaseService<UserRepository> {
     }
 
     const matches =
-      await bcrypt.compare(
+      await PasswordService.compare(
         data.currentPassword,
         user.password
       );
@@ -125,9 +125,8 @@ export class UserService extends BaseService<UserRepository> {
     }
 
     const hashedPassword =
-      await bcrypt.hash(
-        data.newPassword,
-        12
+      await PasswordService.hash(
+        data.newPassword
       );
 
     await this.repository.updatePassword(
@@ -145,6 +144,68 @@ export class UserService extends BaseService<UserRepository> {
       userId,
       token,
       expiresAt
+    );
+  }
+
+  public async getUserByPasswordResetToken(
+    token: string
+  ) {
+    return this.repository.findByPasswordResetToken(
+      token
+    );
+  }
+
+  public async clearPasswordResetToken(
+    userId: string
+  ) {
+    return this.repository.clearPasswordResetToken(
+      userId
+    );
+  }
+
+  public async resetPassword(
+    userId: string,
+    hashedPassword: string
+  ) {
+    return this.repository.resetPassword(
+      userId,
+      hashedPassword
+    );
+  }
+
+  public async saveEmailVerificationToken(
+    userId: string,
+    tokenHash: string,
+    expiresAt: Date
+  ) {
+    return this.repository.saveEmailVerificationToken(
+      userId,
+      tokenHash,
+      expiresAt
+    );
+  }
+
+  public async getUserByEmailVerificationToken(
+    tokenHash: string
+  ) {
+    return this.repository.getUserByEmailVerificationToken(
+      tokenHash
+    );
+  }
+
+  public async markEmailVerified(
+    userId: string
+  ) {
+    return this.repository.markEmailVerified(
+      userId
+    );
+  }
+
+  public async clearEmailVerificationToken(
+    userId: string
+  ) {
+    return this.repository.clearEmailVerificationToken(
+      userId
     );
   }
 }

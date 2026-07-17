@@ -34,6 +34,10 @@ export interface UserDocument extends Document {
   passwordResetToken?: string;
 
   passwordResetExpiresAt?: Date;
+
+  emailVerificationToken?: string;
+
+  emailVerificationExpiresAt?: Date;
 }
 
 const UserSchema = new Schema<UserDocument>(
@@ -96,6 +100,14 @@ const UserSchema = new Schema<UserDocument>(
     },
 
     emailVerifiedAt: {
+      type: Date,
+    },
+
+    emailVerificationToken: {
+      type: String,
+    },
+
+    emailVerificationExpiresAt: {
       type: Date,
     },
 
