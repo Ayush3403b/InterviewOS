@@ -22,14 +22,12 @@ export class OrganizationPolicy {
     currentOrganizationId?: Types.ObjectId,
     targetOrganizationId?: Types.ObjectId
   ): boolean {
-
     if (
       !currentOrganizationId ||
       !targetOrganizationId
     ) {
       return false;
     }
-
     return (
       currentOrganizationId.toString() ===
       targetOrganizationId.toString()
@@ -44,7 +42,6 @@ export class OrganizationPolicy {
     currentOrganizationId?: Types.ObjectId,
     targetOrganizationId?: Types.ObjectId
   ): boolean {
-
     return (
       this.isSuperAdmin(role) ||
       this.belongsToSameOrganization(
@@ -53,5 +50,4 @@ export class OrganizationPolicy {
       )
     );
   }
-
 }

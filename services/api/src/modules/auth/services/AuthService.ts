@@ -260,6 +260,14 @@ export class AuthService extends BaseService<UserService> {
       );
     }
 
+    if (!user.isEmailVerified) {
+      throw new ApiError(
+        403,
+        "Please verify your email before logging in.",
+        ErrorCode.FORBIDDEN
+      );
+    }
+
     // Update last login
     const updatedUser = await this.repository.updateLastLogin(
       user.id

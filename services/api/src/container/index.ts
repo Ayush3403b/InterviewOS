@@ -12,6 +12,22 @@ import { RefreshTokenService } from "../modules/auth/services/RefreshTokenServic
 
 import { PermissionService } from "../modules/authorization/services/PermissionService";
 
+import OrganizationRepository from "../modules/organization/repositories/OrganizationRepository";
+
+import OrganizationService from "../modules/organization/services/OrganizationService";
+
+import OrganizationController from "../modules/organization/controllers/OrganizationController";
+
+import { InterviewSessionRepository } from "../modules/interview-session/repositories/InterviewSessionRepository";
+import InterviewSessionService from "../modules/interview-session/services/InterviewSessionService";
+import InterviewSessionController from "../modules/interview-session/controllers/InterviewSessionController";
+
+import ConversationRepository from "../modules/conversation/repositories/ConversationRepository";
+import ConversationService from "../modules/conversation/services/ConversationService";
+import ConversationController from "../modules/conversation/controllers/ConversationController";
+
+
+
 /**
  * Repositories
  */
@@ -19,6 +35,15 @@ const userRepository = new UserRepository();
 
 const refreshTokenRepository =
   new RefreshTokenRepository();
+
+const organizationRepository =
+  new OrganizationRepository(); 
+  
+const interviewSessionRepository =
+  new InterviewSessionRepository(); 
+
+const conversationRepository =
+  new ConversationRepository();  
 
 /**
  * Services
@@ -46,6 +71,24 @@ const authService =
     emailService
   );  
 
+const permissionService =
+  new PermissionService();   
+
+const organizationService =
+  new OrganizationService(
+    organizationRepository
+  ); 
+  
+const interviewSessionService =
+  new InterviewSessionService(
+    interviewSessionRepository
+  ); 
+  
+const conversationService =
+  new ConversationService(
+    conversationRepository
+  );  
+
 /**
  * Controllers
  */
@@ -55,8 +98,21 @@ const userController =
 const authController =
   new AuthController(authService);
 
-const permissionService =
-  new PermissionService();  
+const organizationController =
+  new OrganizationController(
+    organizationService
+  );  
+
+const interviewSessionController =
+  new InterviewSessionController(
+    interviewSessionService
+  );
+  
+const conversationController =
+  new ConversationController(
+    conversationService
+  );  
+ 
 
 export {
   userRepository,
@@ -78,4 +134,22 @@ export {
   sessionService,
 
   permissionService,
+
+  organizationRepository,
+
+  organizationService,
+
+  organizationController,
+
+  interviewSessionRepository,
+
+  interviewSessionService,
+
+  interviewSessionController,
+
+  conversationRepository,
+
+  conversationService,
+
+  conversationController,
 };
