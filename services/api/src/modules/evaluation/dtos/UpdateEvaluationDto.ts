@@ -1,28 +1,26 @@
-import { EvaluationStatus } from "../types/evaluation.types";
+import {
+  HiringRecommendation,
+  QuestionEvaluation,
+  SkillScores,
+  EvaluationMetadata,
+} from "../types/evaluation.types";
 
 export interface UpdateEvaluationDto {
-  status?: EvaluationStatus;
-
   overallScore?: number;
 
-  scores?: {
-    communication?: number;
-    technical?: number;
-    problemSolving?: number;
-    confidence?: number;
-  };
+  skillScores?: SkillScores;
 
-  feedback?: string;
+  strengths?: string[];
 
-  provider?: string;
+  weaknesses?: string[];
 
-  llmModel?: string;
+  recommendations?: string[];
 
-  tokensUsed?: number;
+  overallSummary?: string;
 
-  evaluationTime?: number;
+  hiringRecommendation?: HiringRecommendation;
 
-  metadata?: Record<string, unknown>;
+  questionEvaluations?: QuestionEvaluation[];
 
-  publishedAt?: Date;
+  metadata?: EvaluationMetadata;
 }

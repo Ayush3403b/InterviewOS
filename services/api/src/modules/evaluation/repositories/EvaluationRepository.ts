@@ -4,6 +4,8 @@ import { BaseRepository } from "../../../database/BaseRepository";
 
 import { EvaluationModel } from "../models/EvaluationModel";
 
+import { CompleteEvaluationDto } from "../dtos/CompleteEvaluation.dto";
+
 import {
   EvaluationDocument,
   EvaluationStatus,
@@ -19,80 +21,59 @@ export class EvaluationRepository extends BaseRepository<EvaluationDocument> {
   /* -------------------------------------------------------------------------- */
 
   /**
-   * Create Evaluation
-   */
-  async createEvaluation(
-    data: Partial<EvaluationDocument>
-  ) {
-    return this.create(data);
-  }
-
-  /**
-   * Find Evaluation by ID
-   */
-  async findById(id: string) {
-    return super.findById(id);
-  }
-
-  /**
-   * Find Evaluation by Interview Session
+   * Find evaluation by interview session
    */
   async findByInterviewSession(
-    interviewSessionId: string
+    interviewSessionId: string | Types.ObjectId
   ) {
     return this.model.findOne({
-      interviewSessionId: new Types.ObjectId(
-        interviewSessionId
-      ),
+      interviewSessionId,
     });
   }
 
   /**
-   * Find Evaluations by Candidate
+   * Find evaluation by candidate
    */
   async findByCandidate(
-    candidateId: string,
-    page = 1,
-    limit = 10
+    candidateId: string | Types.ObjectId
   ) {
-    const skip = (page - 1) * limit;
-
     return this.model
       .find({
-        candidateId: new Types.ObjectId(candidateId),
+        candidateId,
       })
       .sort({
         createdAt: -1,
-      })
-      .skip(skip)
-      .limit(limit);
+      });
   }
 
   /**
-   * Find Evaluations by Organization
+   * Find evaluation by organization
    */
   async findByOrganization(
-    organizationId: string,
-    page = 1,
-    limit = 10
+    organizationId: string | Types.ObjectId
   ) {
-    const skip = (page - 1) * limit;
-
     return this.model
       .find({
-        organizationId: new Types.ObjectId(
-          organizationId
-        ),
+        organizationId,
       })
       .sort({
         createdAt: -1,
-      })
-      .skip(skip)
-      .limit(limit);
+      });
   }
 
   /**
-   * Generic Filter
+   * Find evaluations by status
+   */
+  async findByStatus(
+    status: EvaluationStatus
+  ) {
+    return this.model.find({
+      status,
+    });
+  }
+
+  /**
+   * Generic filter helper
    */
   async findWithFilter(
     filter: FilterQuery<EvaluationDocument>
@@ -101,11 +82,11 @@ export class EvaluationRepository extends BaseRepository<EvaluationDocument> {
   }
 
   /* -------------------------------------------------------------------------- */
-  /*                           Evaluation Lifecycle                             */
+  /*                             Lifecycle Updates                              */
   /* -------------------------------------------------------------------------- */
 
   /**
-   * Mark Evaluation In Progress
+   * Mark evaluation as started
    */
   async startEvaluation(id: string) {
     return this.model.findByIdAndUpdate(
@@ -120,16 +101,32 @@ export class EvaluationRepository extends BaseRepository<EvaluationDocument> {
   }
 
   /**
-   * Complete Evaluation
+   * Save AI evaluation result
    */
-  async completeEvaluation(
+  async saveResult(
     id: string,
-    data: Partial<EvaluationDocument>
+    data: CompleteEvaluationDto
   ) {
     return this.model.findByIdAndUpdate(
       id,
       {
         ...data,
+      },
+      {
+        new: true,
+      }
+    );
+  }
+
+  /**
+   * Mark evaluation as completed
+   */
+  async completeEvaluation(
+    id: string
+  ) {
+    return this.model.findByIdAndUpdate(
+      id,
+      {
         status: EvaluationStatus.COMPLETED,
       },
       {
@@ -139,7 +136,7 @@ export class EvaluationRepository extends BaseRepository<EvaluationDocument> {
   }
 
   /**
-   * Publish Evaluation
+   * Publish evaluation
    */
   async publishEvaluation(id: string) {
     return this.model.findByIdAndUpdate(
@@ -154,26 +151,109 @@ export class EvaluationRepository extends BaseRepository<EvaluationDocument> {
     );
   }
 
+  /**
+   * Reset evaluation
+   */
+  async resetEvaluation(id: string) {
+    return this.model.findByIdAndUpdate(
+      id,
+      {
+        status: EvaluationStatus.NOT_STARTED,
+
+        overallScore: 0,
+
+        skillScores: {
+          technical: 0,
+          communication: 0,
+          problemSolving: 0,
+          confidence: 0,
+        },
+
+        strengths: [],
+
+        weaknesses: [],
+
+        recommendations: [],
+
+        overallSummary: "",
+
+        questionEvaluations: [],
+
+        metadata: {},
+
+        publishedAt: null,
+      },
+      {
+        new: true,
+      }
+    );
+  }
+
   /* -------------------------------------------------------------------------- */
-  /*                                 Dashboard                                  */
+  /*                                Statistics                                  */
   /* -------------------------------------------------------------------------- */
 
   /**
-   * Count Candidate Evaluations
+   * Count evaluations of candidate
    */
   async countByCandidate(
-    candidateId: string
+    candidateId: string | Types.ObjectId
   ) {
     return this.model.countDocuments({
-      candidateId: new Types.ObjectId(candidateId),
+      candidateId,
     });
   }
 
   /**
-   * Evaluation Statistics
+   * Candidate evaluation statistics
    */
-  async getStatistics() {
+  async getCandidateStatistics(
+    candidateId: string | Types.ObjectId
+  ) {
     return this.model.aggregate([
+      {
+        $match: {
+          candidateId: new Types.ObjectId(candidateId),
+        },
+      },
+      {
+        $group: {
+          _id: null,
+
+          totalEvaluations: {
+            $sum: 1,
+          },
+
+          averageScore: {
+            $avg: "$overallScore",
+          },
+
+          highestScore: {
+            $max: "$overallScore",
+          },
+
+          lowestScore: {
+            $min: "$overallScore",
+          },
+        },
+      },
+    ]);
+  }
+
+  /**
+   * Organization evaluation statistics
+   */
+  async getOrganizationStatistics(
+    organizationId: string | Types.ObjectId
+  ) {
+    return this.model.aggregate([
+      {
+        $match: {
+          organizationId: new Types.ObjectId(
+            organizationId
+          ),
+        },
+      },
       {
         $group: {
           _id: null,

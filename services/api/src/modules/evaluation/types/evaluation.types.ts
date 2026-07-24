@@ -1,9 +1,5 @@
 import { Document, Types } from "mongoose";
 
-/* -------------------------------------------------------------------------- */
-/*                             Evaluation Status                              */
-/* -------------------------------------------------------------------------- */
-
 export enum EvaluationStatus {
   NOT_STARTED = "NOT_STARTED",
   IN_PROGRESS = "IN_PROGRESS",
@@ -11,90 +7,65 @@ export enum EvaluationStatus {
   PUBLISHED = "PUBLISHED",
 }
 
-/* -------------------------------------------------------------------------- */
-/*                              Evaluation Scores                             */
-/* -------------------------------------------------------------------------- */
+export enum HiringRecommendation {
+  STRONG_HIRE = "STRONG_HIRE",
+  HIRE = "HIRE",
+  BORDERLINE = "BORDERLINE",
+  NO_HIRE = "NO_HIRE",
+}
 
-export interface EvaluationScores {
-  communication: number;
+export interface SkillScores {
   technical: number;
+  communication: number;
   problemSolving: number;
   confidence: number;
 }
 
-/* -------------------------------------------------------------------------- */
-/*                           Evaluation Document                              */
-/* -------------------------------------------------------------------------- */
+export interface QuestionEvaluation {
+  turnNumber: number;
+  question: string;
+  answer: string;
+  score: number;
+  feedback: string;
+}
+
+export interface EvaluationMetadata {
+  provider?: string;
+  model?: string;
+  promptVersion?: string;
+  latencyMs?: number;
+  tokensUsed?: number;
+}
 
 export interface EvaluationDocument extends Document {
-  /**
-   * Related Interview Session
-   */
   interviewSessionId: Types.ObjectId;
 
-  /**
-   * Organization
-   */
   organizationId: Types.ObjectId;
 
-  /**
-   * Candidate
-   */
   candidateId: Types.ObjectId;
 
-  /**
-   * Current Evaluation Status
-   */
   status: EvaluationStatus;
 
-  /**
-   * Final Overall Score (0-100)
-   */
   overallScore: number;
 
-  /**
-   * Category-wise Scores
-   */
-  scores: EvaluationScores;
+  skillScores: SkillScores;
 
-  /**
-   * AI Generated Overall Feedback
-   */
-  feedback: string;
+  strengths: string[];
 
-  /**
-   * AI Provider
-   */
-  provider: string;
+  weaknesses: string[];
 
-  /**
-   * LLM Model Name
-   */
-  llmModel: string;
+  recommendations: string[];
 
-  /**
-   * Tokens Consumed During Evaluation
-   */
-  tokensUsed: number;
+  overallSummary: string;
 
-  /**
-   * Evaluation Duration (milliseconds)
-   */
-  evaluationTime: number;
+  hiringRecommendation: HiringRecommendation;
 
-  /**
-   * Provider-specific Metadata
-   */
-  metadata: Record<string, unknown>;
+  questionEvaluations: QuestionEvaluation[];
 
-  /**
-   * Evaluation Published Time
-   */
-  publishedAt?: Date | null;
+  metadata: EvaluationMetadata;
 
-  /**
-   * Automatic Timestamps
-   */
+  publishedAt?: Date;
+
   createdAt: Date;
 
   updatedAt: Date;

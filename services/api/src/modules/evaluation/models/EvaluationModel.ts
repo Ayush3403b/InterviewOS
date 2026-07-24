@@ -3,213 +3,123 @@ import { Schema, model } from "mongoose";
 import {
   EvaluationDocument,
   EvaluationStatus,
+  HiringRecommendation,
 } from "../types/evaluation.types";
 
-const EvaluationSchema = new Schema<EvaluationDocument>(
+const SkillScoreSchema = new Schema(
   {
-    /**
-     * Associated Interview Session
-     */
-    interviewSessionId: {
-      type: Schema.Types.ObjectId,
-      ref: "InterviewSession",
-      required: true,
-      unique: true,
-      index: true,
-    },
+    technical: { type: Number, default: 0, min: 0, max: 100 },
 
-    /**
-     * Organization
-     */
-    organizationId: {
-      type: Schema.Types.ObjectId,
-      ref: "Organization",
-      required: true,
-      index: true,
-    },
+    communication: { type: Number, default: 0, min: 0, max: 100 },
 
-    /**
-     * Candidate
-     */
-    candidateId: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-      index: true,
-    },
+    problemSolving: { type: Number, default: 0, min: 0, max: 100 },
 
-    /**
-     * Current Evaluation Status
-     */
-    status: {
-      type: String,
-      enum: Object.values(EvaluationStatus),
-      default: EvaluationStatus.NOT_STARTED,
-      required: true,
-    },
-
-    /**
-     * Final Overall Score
-     */
-    overallScore: {
-      type: Number,
-      default: 0,
-      min: 0,
-      max: 100,
-    },
-
-    /**
-     * Category-wise Scores
-     */
-    scores: {
-      communication: {
-        type: Number,
-        default: 0,
-        min: 0,
-        max: 100,
-      },
-
-      technical: {
-        type: Number,
-        default: 0,
-        min: 0,
-        max: 100,
-      },
-
-      problemSolving: {
-        type: Number,
-        default: 0,
-        min: 0,
-        max: 100,
-      },
-
-      confidence: {
-        type: Number,
-        default: 0,
-        min: 0,
-        max: 100,
-      },
-    },
-
-    /**
-     * AI Generated Evaluation Feedback
-     */
-    feedback: {
-      type: String,
-      trim: true,
-      default: "",
-    },
-
-    /**
-     * AI Provider
-     */
-    provider: {
-      type: String,
-      trim: true,
-      default: "",
-    },
-
-    /**
-     * LLM Model
-     */
-    llmModel: {
-      type: String,
-      trim: true,
-      default: "",
-    },
-
-    /**
-     * Tokens Consumed
-     */
-    tokensUsed: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-
-    /**
-     * Evaluation Duration (ms)
-     */
-    evaluationTime: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-
-    /**
-     * Additional Provider Metadata
-     */
-    metadata: {
-      type: Schema.Types.Mixed,
-      default: {},
-    },
-
-    /**
-     * Published Time
-     */
-    publishedAt: {
-      type: Date,
-      default: null,
-    },
+    confidence: { type: Number, default: 0, min: 0, max: 100 },
   },
-  {
-    timestamps: true,
-    versionKey: false,
-    collection: "evaluations",
-  }
+  { _id: false }
 );
 
-/* -------------------------------------------------------------------------- */
-/*                                   Indexes                                  */
-/* -------------------------------------------------------------------------- */
+const QuestionEvaluationSchema = new Schema(
+  {
+    turnNumber: Number,
 
-/**
- * Fetch Evaluation by Interview Session
- */
-EvaluationSchema.index({
-  interviewSessionId: 1,
-});
+    question: String,
 
-/**
- * Candidate Evaluation History
- */
-EvaluationSchema.index({
-  candidateId: 1,
-  createdAt: -1,
-});
+    answer: String,
 
-/**
- * Organization Evaluation Dashboard
- */
-EvaluationSchema.index({
-  organizationId: 1,
-  createdAt: -1,
-});
+    score: Number,
 
-/**
- * Status Filter
- */
-EvaluationSchema.index({
-  status: 1,
-});
+    feedback: String,
+  },
+  { _id: false }
+);
 
-/**
- * AI Provider Analytics
- */
-EvaluationSchema.index({
-  provider: 1,
-});
+const EvaluationSchema =
+  new Schema<EvaluationDocument>(
+    {
+      interviewSessionId: {
+        type: Schema.Types.ObjectId,
+        ref: "InterviewSession",
+        required: true,
+        unique: true,
+      },
 
-/**
- * AI Model Analytics
- */
-EvaluationSchema.index({
-  llmModel: 1,
-});
+      organizationId: {
+        type: Schema.Types.ObjectId,
+        ref: "Organization",
+        required: true,
+      },
 
-/* -------------------------------------------------------------------------- */
-/*                                    Model                                   */
-/* -------------------------------------------------------------------------- */
+      candidateId: {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+        required: true,
+      },
+
+      status: {
+        type: String,
+        enum: Object.values(EvaluationStatus),
+        default: EvaluationStatus.NOT_STARTED,
+      },
+
+      overallScore: {
+        type: Number,
+        default: 0,
+      },
+
+      skillScores: {
+        type: SkillScoreSchema,
+        default: () => ({
+          technical: 0,
+          communication: 0,
+          problemSolving: 0,
+          confidence: 0,
+        }),
+      },
+
+      strengths: {
+        type: [String],
+        default: [],
+      },
+
+      weaknesses: {
+        type: [String],
+        default: [],
+      },
+
+      recommendations: {
+        type: [String],
+        default: [],
+      },
+
+      overallSummary: {
+        type: String,
+        default: "",
+      },
+
+      hiringRecommendation: {
+        type: String,
+        enum: Object.values(HiringRecommendation),
+        default: HiringRecommendation.BORDERLINE,
+      },
+
+      questionEvaluations: {
+        type: [QuestionEvaluationSchema],
+        default: [],
+      },
+
+      metadata: {
+        type: Schema.Types.Mixed,
+        default: {},
+      },
+
+      publishedAt: Date,
+    },
+    {
+      timestamps: true,
+      versionKey: false,
+    }
+  );
 
 export const EvaluationModel = model<EvaluationDocument>(
   "Evaluation",

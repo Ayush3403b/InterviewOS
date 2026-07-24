@@ -26,6 +26,11 @@ import ConversationRepository from "../modules/conversation/repositories/Convers
 import ConversationService from "../modules/conversation/services/ConversationService";
 import ConversationController from "../modules/conversation/controllers/ConversationController";
 
+import { EvaluationRepository } from "../modules/evaluation/repositories/EvaluationRepository";
+import EvaluationService  from "../modules/evaluation/services/EvaluationService";
+import EvaluationController  from "../modules/evaluation/controllers/EvaluationController";
+
+import { MockEvaluationAgent } from "../agents/evaluation/MockEvaluationAgent";
 
 
 /**
@@ -44,6 +49,12 @@ const interviewSessionRepository =
 
 const conversationRepository =
   new ConversationRepository();  
+
+const evaluationRepository =
+  new EvaluationRepository();  
+
+const evaluationAgent =
+  new MockEvaluationAgent();  
 
 /**
  * Services
@@ -87,6 +98,14 @@ const interviewSessionService =
 const conversationService =
   new ConversationService(
     conversationRepository
+  ); 
+  
+const evaluationService =
+  new EvaluationService(
+    evaluationRepository,
+    conversationRepository,
+    interviewSessionRepository,
+    evaluationAgent
   );  
 
 /**
@@ -111,6 +130,11 @@ const interviewSessionController =
 const conversationController =
   new ConversationController(
     conversationService
+  );  
+
+const evaluationController =
+  new EvaluationController(
+    evaluationService
   );  
  
 
@@ -152,4 +176,10 @@ export {
   conversationService,
 
   conversationController,
+
+  evaluationRepository,
+
+  evaluationService,
+
+  evaluationController,
 };
