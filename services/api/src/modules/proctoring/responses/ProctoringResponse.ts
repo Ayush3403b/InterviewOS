@@ -29,7 +29,8 @@ export class ProctoringResponse {
 
     return {
       id: session._id,
-      interviewSessionId: session.interviewSessionId,
+      subjectType: session.subjectType,
+      subjectId: session.subjectId,
       candidateId,
       candidateName,
       candidateEmail,

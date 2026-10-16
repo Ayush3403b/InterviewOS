@@ -1,4 +1,5 @@
 import {
+  ProctoredSubjectType,
   ProctoringFlagType,
   ProctoringSeverity,
 } from "../../modules/proctoring/types/proctoring.types";
@@ -24,7 +25,10 @@ import {
  * object detection, etc). It should NOT be sent every tick.
  */
 export interface ProctoringSignalInput {
-  interviewSessionId: string;
+  /** What's being proctored - agents may tune rules per type (see idle thresholds). */
+  subjectType: ProctoredSubjectType;
+
+  subjectId: string;
 
   candidateId: string;
 

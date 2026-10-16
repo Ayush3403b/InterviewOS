@@ -36,21 +36,23 @@ export interface UseProctoringResult {
 }
 
 /**
- * Drives continuous tracking for one interview session:
+ * Drives continuous tracking for one proctored subject (an interview
+ * session or an MCQ attempt):
  *  - runs on-device face/gaze detection (if available)
  *  - watches tab focus / screen-share
  *  - streams derived signals to the backend every `intervalMs`
  *  - surfaces trust score + any warnings back to the UI
  *  - accepts one-off signals (camera/mic/location/voice) via `sendSignal`
  *
- * Mount this once on the interview room page, passing the same
+ * Mount this once on the interview/test room page, passing the same
  * <video> element used for the candidate's camera preview.
  */
 export function useProctoring(
   options: UseProctoringOptions
 ): UseProctoringResult {
   const {
-    interviewSessionId,
+    subjectType,
+    subjectId,
     accessToken,
     videoRef,
     stream,
@@ -58,7 +60,6 @@ export function useProctoring(
     blockCopyPaste,
     intervalMs = 3000,
     screenShareRequired = false,
-    organizationId,
     consentGiven,
     consentVersion,
     referenceFrame,
@@ -82,9 +83,9 @@ export function useProctoring(
       if (!socket?.connected) {
         return;
       }
-      socket.emit("proctoring:signal", { interviewSessionId, ...signal });
+      socket.emit("proctoring:signal", { subjectType, subjectId, ...signal });
     },
-    [interviewSessionId]
+    [subjectType, subjectId]
   );
 
   const { snapshotRef: behaviorSnapshotRef } = useBehaviorMonitoring();
@@ -108,8 +109,8 @@ export function useProctoring(
     socket.on("connect", () => {
       setConnected(true);
       socket.emit("proctoring:join", {
-        interviewSessionId,
-        organizationId,
+        subjectType,
+        subjectId,
         consentGiven,
         consentVersion,
         referenceFrame: referenceFrame || undefined,
@@ -158,7 +159,8 @@ export function useProctoring(
       }
 
       socket.emit("proctoring:signal", {
-        interviewSessionId,
+        subjectType,
+        subjectId,
         faceCount: face.ready ? face.faceCount : undefined,
         faceVisible: face.ready ? face.faceVisible : undefined,
         gazeAwayDurationMs: face.ready ? face.gazeAwayDurationMs : undefined,
@@ -184,12 +186,12 @@ export function useProctoring(
 
     return () => {
       clearInterval(intervalId);
-      socket.emit("proctoring:leave", { interviewSessionId });
+      socket.emit("proctoring:leave", { subjectId });
       socket.disconnect();
       socketRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [interviewSessionId, accessToken]);
+  }, [subjectType, subjectId, accessToken]);
 
   return { status, trustScore, latestWarning, connected, sendSignal };
 }

@@ -1,3 +1,5 @@
+import { ProctoredSubjectType } from "../types/proctoring.types";
+
 export interface RecordSignalDto {
   faceCount?: number;
 
@@ -74,4 +76,9 @@ export interface RecordSignalDto {
   frameBase64?: string;
 
   extra?: Record<string, unknown>;
+}
+
+/** REST fallback body: the signal plus the subject type (id is in the URL). */
+export interface RecordSignalRequestDto extends RecordSignalDto {
+  subjectType: ProctoredSubjectType;
 }

@@ -4,6 +4,17 @@ import { Document, Types } from "mongoose";
 /*                                    Enums                                    */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * What a proctoring session is watching. Proctoring itself is
+ * subject-agnostic - each type only has to tell ProctoringService who
+ * the candidate is (see `ProctoredSubjectResolvers`), and everything
+ * else (signals, risk scoring, timeline, review) is shared.
+ */
+export enum ProctoredSubjectType {
+  INTERVIEW = "INTERVIEW",
+  MCQ_ATTEMPT = "MCQ_ATTEMPT",
+}
+
 export enum ProctoringSessionStatus {
   ACTIVE = "ACTIVE",
   FLAGGED = "FLAGGED",
@@ -137,7 +148,10 @@ export enum ProctoringEventStatus {
 /* -------------------------------------------------------------------------- */
 
 export interface ProctoringSession {
-  interviewSessionId: Types.ObjectId;
+  subjectType: ProctoredSubjectType;
+
+  /** The interview session / MCQ attempt being proctored. */
+  subjectId: Types.ObjectId;
 
   candidateId: Types.ObjectId;
 
@@ -201,8 +215,6 @@ export interface ProctoringSessionDocument
 
 export interface ProctoringEvent {
   proctoringSessionId: Types.ObjectId;
-
-  interviewSessionId: Types.ObjectId;
 
   candidateId: Types.ObjectId;
 

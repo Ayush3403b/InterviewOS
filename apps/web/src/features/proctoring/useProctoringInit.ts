@@ -257,6 +257,17 @@ export function useProctoringInit(): UseProctoringInitResult {
     };
   }, []);
 
+  // The interview/test room opens its own camera stream once the gate
+  // is passed - release this one when the checklist unmounts, or the
+  // camera stays on (and held) behind the room's stream.
+  useEffect(() => {
+    const streams = streamRef;
+    return () => {
+      streams.current?.getTracks().forEach((track) => track.stop());
+      streams.current = null;
+    };
+  }, []);
+
   const retryStep = useCallback(
     async (id: ProctoringInitStepId) => {
       switch (id) {

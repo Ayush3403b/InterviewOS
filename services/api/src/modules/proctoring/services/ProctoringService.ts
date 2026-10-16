@@ -16,6 +16,7 @@ import {
 } from "../../../agents/proctoring/IProctoringAgent";
 
 import {
+  ProctoredSubjectType,
   ProctoringSessionDocument,
   ProctoringSessionStatus,
   ProctoringSeverity,
@@ -49,11 +50,28 @@ export interface RecordSignalResult {
   flags: ProctoringFlag[];
 }
 
+/** What a subject's owning module reports back about it. */
+export interface ProctoredSubjectInfo {
+  candidateId: string;
+  organizationId?: string;
+}
+
+/**
+ * One lookup per subject type, wired in the container. This is the
+ * only place proctoring learns anything about interviews or MCQ
+ * attempts - returning null means "no such subject" (404).
+ */
+export type ProctoredSubjectResolvers = Record<
+  ProctoredSubjectType,
+  (subjectId: string) => Promise<ProctoredSubjectInfo | null>
+>;
+
 export default class ProctoringService extends BaseService<ProctoringSessionRepository> {
   constructor(
     repository: ProctoringSessionRepository,
     private readonly eventRepository: ProctoringEventRepository,
-    private readonly agent: IProctoringAgent
+    private readonly agent: IProctoringAgent,
+    private readonly subjectResolvers: ProctoredSubjectResolvers
   ) {
     super(repository);
   }
@@ -68,20 +86,23 @@ export default class ProctoringService extends BaseService<ProctoringSessionRepo
     }
   }
 
+  /** candidateId may or may not be populated, depending on the query. */
+  private candidateIdOf(session: ProctoringSessionDocument): string {
+    const rawCandidate = session.candidateId as unknown;
+
+    return rawCandidate &&
+      typeof rawCandidate === "object" &&
+      "_id" in (rawCandidate as Record<string, unknown>)
+      ? String((rawCandidate as { _id: unknown })._id)
+      : String(rawCandidate);
+  }
+
   private ensureAccess(
     session: ProctoringSessionDocument,
     requesterId: string,
     requesterRole?: UserRole
   ): void {
-    const rawCandidate = session.candidateId as unknown;
-    const candidateIdStr =
-      rawCandidate &&
-      typeof rawCandidate === "object" &&
-      "_id" in (rawCandidate as Record<string, unknown>)
-        ? String((rawCandidate as { _id: unknown })._id)
-        : String(rawCandidate);
-
-    const isOwner = candidateIdStr === requesterId;
+    const isOwner = this.candidateIdOf(session) === requesterId;
     const isElevated = requesterRole
       ? ELEVATED_ROLES.includes(requesterRole)
       : false;
@@ -95,39 +116,133 @@ export default class ProctoringService extends BaseService<ProctoringSessionRepo
     }
   }
 
+  /**
+   * Asks the subject's owning module who the candidate is, and refuses
+   * anyone else - without this, anyone who learned another candidate's
+   * interview/attempt id could open (or feed signals into) their
+   * proctoring session.
+   */
+  private async resolveOwnedSubject(
+    subjectType: ProctoredSubjectType,
+    subjectId: string,
+    candidateId: string
+  ): Promise<ProctoredSubjectInfo> {
+    const resolve = this.subjectResolvers[subjectType];
+
+    if (!resolve) {
+      throw new ApiError(400, "Invalid subject type.", ErrorCode.BAD_REQUEST);
+    }
+
+    const subject = await resolve(subjectId);
+
+    if (!subject) {
+      throw new ApiError(
+        404,
+        "Nothing to proctor was found for this id.",
+        ErrorCode.NOT_FOUND
+      );
+    }
+
+    if (subject.candidateId !== candidateId) {
+      throw new ApiError(
+        403,
+        "You can only be proctored for your own session.",
+        ErrorCode.FORBIDDEN
+      );
+    }
+
+    return subject;
+  }
+
   /* -------------------------------------------------------------------------- */
   /*                              Session Lifecycle                             */
   /* -------------------------------------------------------------------------- */
 
   /**
-   * Start (or resume) continuous tracking for an interview session.
-   * Idempotent - calling this again for the same interview returns
-   * the existing session instead of erroring, so a flaky client
-   * reconnecting mid-interview just keeps working.
+   * Start (or resume) continuous tracking for a subject. Idempotent -
+   * calling this again for the same subject returns the existing
+   * session instead of erroring, so a flaky client reconnecting
+   * mid-session just keeps working.
+   *
+   * The owning module confirms the caller is the subject's candidate
+   * before a session is created. After that the stored candidateId is
+   * the check, so continuous signals don't cost an extra lookup.
    */
   public async startSession(
-    interviewSessionId: string,
+    subjectType: ProctoredSubjectType,
+    subjectId: string,
     candidateId: string,
-    organizationId?: string,
     consentGiven?: boolean,
     consentVersion?: string,
     referenceFrame?: string
   ): Promise<ProctoringSessionDocument> {
-    this.ensureValidObjectId(interviewSessionId, "interview session id");
+    this.ensureValidObjectId(subjectId, "subject id");
     this.ensureValidObjectId(candidateId, "candidate id");
 
-    return this.repository.getOrCreate({
-      interviewSessionId: new Types.ObjectId(interviewSessionId),
+    const existing = await this.repository.findBySubject(subjectId);
+
+    if (existing) {
+      if (
+        existing.subjectType !== subjectType ||
+        this.candidateIdOf(existing) !== candidateId
+      ) {
+        throw new ApiError(
+          403,
+          "You can only be proctored for your own session.",
+          ErrorCode.FORBIDDEN
+        );
+      }
+
+      if (referenceFrame && !existing.referenceFrame) {
+        await this.repository.setReferenceFrameIfMissing(
+          existing._id,
+          referenceFrame
+        );
+        existing.referenceFrame = referenceFrame;
+      }
+
+      return existing;
+    }
+
+    const subject = await this.resolveOwnedSubject(
+      subjectType,
+      subjectId,
+      candidateId
+    );
+
+    const created = await this.repository.createForSubject({
+      subjectType,
+      subjectId: new Types.ObjectId(subjectId),
       candidateId: new Types.ObjectId(candidateId),
       organizationId:
-        organizationId && Types.ObjectId.isValid(organizationId)
-          ? new Types.ObjectId(organizationId)
+        subject.organizationId && Types.ObjectId.isValid(subject.organizationId)
+          ? new Types.ObjectId(subject.organizationId)
           : undefined,
       agentProvider: this.agent.provider,
       consentGivenAt: consentGiven ? new Date() : undefined,
       consentVersion: consentVersion ?? "1.0",
       referenceFrame,
     });
+
+    if (!created) {
+      throw new ApiError(
+        500,
+        "Could not start the proctoring session.",
+        ErrorCode.INTERNAL_SERVER_ERROR
+      );
+    }
+
+    // Lost a creation race to a different candidate's request - same
+    // ownership rule as the `existing` branch above.
+    if (this.candidateIdOf(created) !== candidateId) {
+      throw new ApiError(
+        403,
+        "You can only be proctored for your own session.",
+        ErrorCode.FORBIDDEN
+      );
+    }
+
+    return created;
   }
 
   /**
@@ -138,18 +253,17 @@ export default class ProctoringService extends BaseService<ProctoringSessionRepo
    * is wired up in the container decides what counts as a violation.
    */
   public async recordSignal(
-    interviewSessionId: string,
+    subjectType: ProctoredSubjectType,
+    subjectId: string,
     candidateId: string,
     signal: Omit<
       ProctoringSignalInput,
-      "interviewSessionId" | "candidateId" | "timestamp"
+      "subjectId" | "subjectType" | "candidateId" | "timestamp"
     >
   ): Promise<RecordSignalResult> {
-    this.ensureValidObjectId(interviewSessionId, "interview session id");
-    this.ensureValidObjectId(candidateId, "candidate id");
-
     const session = await this.startSession(
-      interviewSessionId,
+      subjectType,
+      subjectId,
       candidateId
     );
 
@@ -157,14 +271,15 @@ export default class ProctoringService extends BaseService<ProctoringSessionRepo
       session.status === ProctoringSessionStatus.COMPLETED ||
       session.status === ProctoringSessionStatus.TERMINATED
     ) {
-      // Late/stray signal after the interview ended - ignore quietly
+      // Late/stray signal after the session ended - ignore quietly
       // rather than erroring the client out mid-stream.
       return { session, flags: [] };
     }
 
     const analysis = await this.agent.analyze({
       ...signal,
-      interviewSessionId,
+      subjectType,
+      subjectId,
       candidateId,
       timestamp: new Date(),
     });
@@ -172,7 +287,6 @@ export default class ProctoringService extends BaseService<ProctoringSessionRepo
     if (analysis.flags.length) {
       await this.eventRepository.recordMany(
         session._id,
-        new Types.ObjectId(interviewSessionId),
         new Types.ObjectId(candidateId),
         analysis.flags
       );
@@ -204,12 +318,12 @@ export default class ProctoringService extends BaseService<ProctoringSessionRepo
   }
 
   public async completeSession(
-    interviewSessionId: string,
+    subjectId: string,
     requesterId: string,
     requesterRole?: UserRole
   ): Promise<ProctoringSessionDocument | null> {
     const session = await this.getSession(
-      interviewSessionId,
+      subjectId,
       requesterId,
       requesterRole
     );
@@ -217,13 +331,27 @@ export default class ProctoringService extends BaseService<ProctoringSessionRepo
     return this.repository.markCompleted(session._id);
   }
 
+  /**
+   * Server-side counterpart to completeSession, for the module that
+   * owns the subject to call once it ends (interview finished, MCQ
+   * attempt submitted) - the caller has already checked ownership.
+   * A subject that was never proctored is a no-op, not an error.
+   */
+  public async completeSessionForSubject(
+    subjectId: string
+  ): Promise<ProctoringSessionDocument | null> {
+    const session = await this.repository.findBySubject(subjectId);
+
+    return session ? this.repository.markCompleted(session._id) : null;
+  }
+
   public async terminateSession(
-    interviewSessionId: string,
+    subjectId: string,
     requesterId: string,
     requesterRole?: UserRole
   ): Promise<ProctoringSessionDocument | null> {
     const session = await this.getSession(
-      interviewSessionId,
+      subjectId,
       requesterId,
       requesterRole
     );
@@ -244,15 +372,13 @@ export default class ProctoringService extends BaseService<ProctoringSessionRepo
   /* -------------------------------------------------------------------------- */
 
   public async getSession(
-    interviewSessionId: string,
+    subjectId: string,
     requesterId: string,
     requesterRole?: UserRole
   ): Promise<ProctoringSessionDocument> {
-    this.ensureValidObjectId(interviewSessionId, "interview session id");
+    this.ensureValidObjectId(subjectId, "subject id");
 
-    const session = await this.repository.findByInterviewSession(
-      interviewSessionId
-    );
+    const session = await this.repository.findBySubject(subjectId);
 
     if (!session) {
       throw new ApiError(
@@ -267,15 +393,23 @@ export default class ProctoringService extends BaseService<ProctoringSessionRepo
     return session;
   }
 
+  /**
+   * Summary lookup for other modules (e.g. MCQ results listing a risk
+   * level per attempt) - no access check, callers have done their own.
+   */
+  public async findSessionsForSubjects(subjectIds: string[]) {
+    return this.repository.findBySubjects(subjectIds);
+  }
+
   public async getEvents(
-    interviewSessionId: string,
+    subjectId: string,
     requesterId: string,
     requesterRole: UserRole | undefined,
     page = 1,
     limit = 50
   ) {
     const session = await this.getSession(
-      interviewSessionId,
+      subjectId,
       requesterId,
       requesterRole
     );
@@ -288,12 +422,12 @@ export default class ProctoringService extends BaseService<ProctoringSessionRepo
    * oldest first, capped at MAX_TIMELINE_EVENTS (see the repository).
    */
   public async getTimeline(
-    interviewSessionId: string,
+    subjectId: string,
     requesterId: string,
     requesterRole?: UserRole
   ) {
     const session = await this.getSession(
-      interviewSessionId,
+      subjectId,
       requesterId,
       requesterRole
     );
@@ -307,7 +441,7 @@ export default class ProctoringService extends BaseService<ProctoringSessionRepo
    * only - a candidate can't dismiss their own violations.
    */
   public async updateEventStatus(
-    interviewSessionId: string,
+    subjectId: string,
     eventId: string,
     status: ProctoringEventStatus,
     requesterId: string,
@@ -324,10 +458,18 @@ export default class ProctoringService extends BaseService<ProctoringSessionRepo
     }
 
     // Confirms the requester has access to the *session* the event
-    // belongs to, and implicitly 404s on a bad interviewSessionId.
-    await this.getSession(interviewSessionId, requesterId, requesterRole);
+    // belongs to, and implicitly 404s on a bad subjectId.
+    const session = await this.getSession(
+      subjectId,
+      requesterId,
+      requesterRole
+    );
 
-    const updated = await this.eventRepository.updateStatus(eventId, status);
+    const updated = await this.eventRepository.updateStatusInSession(
+      eventId,
+      session._id,
+      status
+    );
 
     if (!updated) {
       throw new ApiError(404, "Proctoring event not found.", ErrorCode.NOT_FOUND);
@@ -337,19 +479,19 @@ export default class ProctoringService extends BaseService<ProctoringSessionRepo
   }
 
   /**
-   * The end-of-interview proctoring report: risk score + level
+   * The end-of-session proctoring report: risk score + level
    * (recomputed fresh from the full event history, not the session's
    * live incremental field - see RiskEngine's doc comment on why),
    * violation count, severity breakdown, the full evidence timeline,
    * a deterministic summary, and a recommendation.
    */
   public async getReport(
-    interviewSessionId: string,
+    subjectId: string,
     requesterId: string,
     requesterRole?: UserRole
   ) {
     const session = await this.getSession(
-      interviewSessionId,
+      subjectId,
       requesterId,
       requesterRole
     );

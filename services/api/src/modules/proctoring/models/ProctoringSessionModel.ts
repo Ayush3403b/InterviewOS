@@ -1,18 +1,26 @@
 import { Schema, model } from "mongoose";
 
 import {
+  ProctoredSubjectType,
   ProctoringSessionDocument,
   ProctoringSessionStatus,
 } from "../types/proctoring.types";
 
 const ProctoringSessionSchema = new Schema<ProctoringSessionDocument>(
   {
-    interviewSessionId: {
-      type: Schema.Types.ObjectId,
-      ref: "InterviewSession",
+    subjectType: {
+      type: String,
+      enum: Object.values(ProctoredSubjectType),
       required: true,
-      index: true,
-      unique: true,
+    },
+
+    /**
+     * No `ref` - this points at a different collection per
+     * subjectType (interview_sessions / mcq_attempts).
+     */
+    subjectId: {
+      type: Schema.Types.ObjectId,
+      required: true,
     },
 
     candidateId: {
@@ -105,6 +113,22 @@ const ProctoringSessionSchema = new Schema<ProctoringSessionDocument>(
 /* -------------------------------------------------------------------------- */
 /*                                    Indexes                                  */
 /* -------------------------------------------------------------------------- */
+
+/**
+ * One proctoring session per subject. Lookups go by subjectId alone
+ * (ObjectIds don't collide across collections), so it leads the index.
+ *
+ * Partial so rows written before subjectType/subjectId existed don't
+ * all collide on null while the startup migration backfills them -
+ * see migrations/migrateProctoringSubjects.ts.
+ */
+ProctoringSessionSchema.index(
+  { subjectId: 1, subjectType: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { subjectId: { $exists: true } },
+  }
+);
 
 /**
  * Recruiter dashboard: sessions for an org, most recent first.

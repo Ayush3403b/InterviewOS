@@ -10,10 +10,22 @@ import { logger } from "./shared/logger/logger";
 import { createSocketServer } from "./config/socket";
 import { registerSocketGateways } from "./socket/gateway";
 
+import { migrateProctoringSubjects } from "./modules/proctoring/migrations/migrateProctoringSubjects";
+
 async function bootstrap() {
   try {
     // Connect Database
     await connectDatabase();
+
+    // Idempotent data migrations - each is a no-op once applied.
+    try {
+      await migrateProctoringSubjects();
+    } catch (error) {
+      logger.error(
+        "Proctoring subject migration failed - interview proctoring history may be unavailable until it succeeds.",
+        error
+      );
+    }
 
     // Create HTTP Server
     const server = http.createServer(app);

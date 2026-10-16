@@ -29,6 +29,11 @@ app.use(cookieParser());
 
 app.use(morgan("dev"));
 
+// A test's whole question list is saved in one request, which can run
+// past the default 100kb. Registered first: once a body is parsed, the
+// general parser below skips it.
+app.use("/api/v1/mcq-tests", express.json({ limit: "2mb" }));
+
 app.use(express.json());
 
 app.use(express.urlencoded({ extended: true }));

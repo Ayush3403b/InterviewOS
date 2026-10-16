@@ -78,7 +78,7 @@ function makeFakeProctoringSessionRepository(
   session: { riskScore: number; status: string } | null = null
 ) {
   return {
-    findByInterviewSession: vi.fn().mockResolvedValue(session),
+    findBySubject: vi.fn().mockResolvedValue(session),
   };
 }
 
@@ -170,7 +170,7 @@ describe("InterviewOrchestrator.getNextQuestion", () => {
 
     await orchestrator.getNextQuestion("session-1", "user-1");
 
-    expect(proctoringRepo.findByInterviewSession).toHaveBeenCalledWith("session-1");
+    expect(proctoringRepo.findBySubject).toHaveBeenCalledWith("session-1");
     expect(planner.decideNextAction).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -211,7 +211,7 @@ describe("InterviewOrchestrator.getNextQuestion", () => {
 
     const planner = makeFakePlanner();
     const proctoringRepo = {
-      findByInterviewSession: vi.fn().mockRejectedValue(new Error("db down")),
+      findBySubject: vi.fn().mockRejectedValue(new Error("db down")),
     };
 
     const orchestrator = new InterviewOrchestrator(
@@ -431,6 +431,66 @@ describe("InterviewOrchestrator.finishInterview", () => {
     expect(evaluationService.generateEvaluation).toHaveBeenCalledWith(
       "existing-eval"
     );
+
+  });
+
+  it("closes the interview's proctoring session once the interview is completed", async () => {
+
+    const proctoringRepo = {
+      findBySubject: vi.fn().mockResolvedValue({ _id: "proc-1" }),
+      markCompleted: vi.fn().mockResolvedValue({}),
+    };
+
+    const orchestrator = new InterviewOrchestrator(
+      makeFakeInterviewSessionService() as never,
+      makeFakeConversationService() as never,
+      makeFakeInterviewContextService() as never,
+      makeFakeEvaluationService() as never,
+      makeFakeQuestionAgent() as never,
+      makeFakeConversationAgent() as never,
+      makeFakePlanner() as never,
+      proctoringRepo as never
+    );
+
+    const sessionId = new Types.ObjectId().toString();
+
+    await orchestrator.finishInterview(
+      sessionId,
+      new Types.ObjectId().toString(),
+      900
+    );
+
+    expect(proctoringRepo.findBySubject).toHaveBeenCalledWith(sessionId);
+    expect(proctoringRepo.markCompleted).toHaveBeenCalledWith("proc-1");
+
+  });
+
+  it("still finishes the interview when closing proctoring fails", async () => {
+
+    const proctoringRepo = {
+      findBySubject: vi.fn().mockRejectedValue(new Error("db down")),
+      markCompleted: vi.fn(),
+    };
+
+    const orchestrator = new InterviewOrchestrator(
+      makeFakeInterviewSessionService() as never,
+      makeFakeConversationService() as never,
+      makeFakeInterviewContextService() as never,
+      makeFakeEvaluationService() as never,
+      makeFakeQuestionAgent() as never,
+      makeFakeConversationAgent() as never,
+      makeFakePlanner() as never,
+      proctoringRepo as never
+    );
+
+    const result = await orchestrator.finishInterview(
+      new Types.ObjectId().toString(),
+      new Types.ObjectId().toString(),
+      900
+    );
+
+    expect(result.overallScore).toBe(80);
+    expect(proctoringRepo.markCompleted).not.toHaveBeenCalled();
 
   });
 

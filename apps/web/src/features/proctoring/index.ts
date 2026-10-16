@@ -27,6 +27,13 @@ export type { UseProctoringInitResult } from "./useProctoringInit";
 
 export { ProctoringInitChecklist } from "./ProctoringInitChecklist";
 
+export { ProctoringGate } from "./components/ProctoringGate";
+export type { ProctoringGateReadyData } from "./components/ProctoringGate";
+
+export { useFullscreenEnforcement } from "./useFullscreenEnforcement";
+export type { FullscreenEnforcementState } from "./useFullscreenEnforcement";
+export { FullscreenWarningOverlay } from "./components/FullscreenWarningOverlay";
+
 export {
   checkBrowserCompatibility,
   checkDeviceCompatibility,

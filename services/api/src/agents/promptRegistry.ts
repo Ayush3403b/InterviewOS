@@ -1,6 +1,7 @@
 import { EVALUATION_PROMPT_VERSION } from "./evaluation/prompts/buildEvaluationPrompt";
 import { QUESTION_PROMPT_VERSION } from "./question/prompts/buildQuestionPrompt";
 import { CONVERSATION_SUMMARY_PROMPT_VERSION } from "./conversation/prompts/buildConversationSummaryPrompt";
+import { MCQ_PROMPT_VERSION } from "./mcq/prompts/buildMcqPrompt";
 
 /**
  * ================================================================
@@ -28,6 +29,7 @@ export const PROMPT_REGISTRY = {
   evaluation: EVALUATION_PROMPT_VERSION,
   question: QUESTION_PROMPT_VERSION,
   conversationSummary: CONVERSATION_SUMMARY_PROMPT_VERSION,
+  mcqGeneration: MCQ_PROMPT_VERSION,
 } as const;
 
 export type PromptId = keyof typeof PROMPT_REGISTRY;

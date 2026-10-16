@@ -8,7 +8,7 @@ import { validate } from "../../../middlewares/validate.middleware";
 import { signalRateLimiter } from "../../../middlewares/rateLimit.middleware";
 
 import { StartProctoringSessionSchema } from "../validations/StartProctoringSession.validation";
-import { RecordSignalSchema } from "../validations/RecordSignal.validation";
+import { RecordSignalRequestSchema } from "../validations/RecordSignal.validation";
 import { UpdateEventStatusSchema } from "../validations/UpdateEventStatus.validation";
 
 import { UserRole } from "../../users/types/user.types";
@@ -27,13 +27,13 @@ router.post(
 );
 
 router.post(
-  "/sessions/:interviewSessionId/complete",
+  "/sessions/:subjectId/complete",
   authMiddleware,
   proctoringController.completeSession
 );
 
 router.post(
-  "/sessions/:interviewSessionId/terminate",
+  "/sessions/:subjectId/terminate",
   authMiddleware,
   authorize(
     UserRole.RECRUITER,
@@ -49,10 +49,10 @@ router.post(
 /* -------------------------------------------------------------------------- */
 
 router.post(
-  "/sessions/:interviewSessionId/signal",
+  "/sessions/:subjectId/signal",
   authMiddleware,
   signalRateLimiter,
-  validate(RecordSignalSchema),
+  validate(RecordSignalRequestSchema),
   proctoringController.recordSignal
 );
 
@@ -73,31 +73,31 @@ router.get(
 );
 
 router.get(
-  "/sessions/:interviewSessionId",
+  "/sessions/:subjectId",
   authMiddleware,
   proctoringController.getSession
 );
 
 router.get(
-  "/sessions/:interviewSessionId/events",
+  "/sessions/:subjectId/events",
   authMiddleware,
   proctoringController.getEvents
 );
 
 router.get(
-  "/sessions/:interviewSessionId/report",
+  "/sessions/:subjectId/report",
   authMiddleware,
   proctoringController.getReport
 );
 
 router.get(
-  "/sessions/:interviewSessionId/timeline",
+  "/sessions/:subjectId/timeline",
   authMiddleware,
   proctoringController.getTimeline
 );
 
 router.patch(
-  "/sessions/:interviewSessionId/events/:eventId/status",
+  "/sessions/:subjectId/events/:eventId/status",
   authMiddleware,
   authorize(
     UserRole.RECRUITER,

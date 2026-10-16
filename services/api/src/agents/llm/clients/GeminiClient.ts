@@ -52,7 +52,20 @@ export class GeminiClient implements ILLMClient {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: options.system }] },
-          contents: [{ role: "user", parts: [{ text: options.prompt }] }],
+          contents: [
+            {
+              role: "user",
+              parts: [
+                ...(options.attachments ?? []).map((attachment) => ({
+                  inlineData: {
+                    mimeType: attachment.mimeType,
+                    data: attachment.base64,
+                  },
+                })),
+                { text: options.prompt },
+              ],
+            },
+          ],
           generationConfig: {
             responseMimeType: "application/json",
             maxOutputTokens: options.maxTokens,

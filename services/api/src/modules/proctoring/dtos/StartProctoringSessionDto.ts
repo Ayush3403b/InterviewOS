@@ -1,7 +1,9 @@
-export interface StartProctoringSessionDto {
-  interviewSessionId: string;
+import { ProctoredSubjectType } from "../types/proctoring.types";
 
-  organizationId?: string;
+export interface StartProctoringSessionDto {
+  subjectType: ProctoredSubjectType;
+
+  subjectId: string;
 
   consentGiven?: boolean;
 
@@ -9,4 +11,3 @@ export interface StartProctoringSessionDto {
 
   referenceFrame?: string;
 }
-

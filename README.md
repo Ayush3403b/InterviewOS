@@ -2,8 +2,8 @@
 
 An AI-assisted interview platform: resume analysis, an adaptive
 interview loop (question generation, conversation tracking,
-evaluation, coaching, and a final report), and live video proctoring
-with a risk-scored evidence timeline.
+evaluation, coaching, and a final report), proctored MCQ tests, and
+live video proctoring with a risk-scored evidence timeline.
 
 npm workspaces monorepo:
 
@@ -68,7 +68,18 @@ typecheck + unit tests, frontend lint + typecheck + build.
 This is under active, phased development - proctoring (live
 monitoring, risk scoring, evidence timeline, recruiter review) and
 the core interview loop (resume analysis, question/conversation/
-evaluation/coach/report agents) are built and tested. Notifications,
+evaluation/coach/report agents) are built and tested.
+
+MCQ tests (`services/api/src/modules/mcq-test`, `apps/web/src/features/mcq-test`):
+recruiters/faculty/admins build a test, generate questions with AI
+from typed topics or uploaded PDFs/photos (text PDFs are read as text;
+scans and photos go to the model as files), review and edit them, then
+publish it and share an 8-character code or link. Candidates take it
+under the same live proctoring as interviews, with a server-enforced
+timer and one attempt each. Results show each attempt's score
+alongside its proctoring report. Proctoring sessions now point at a
+generic subject (`subjectType` + `subjectId`); the API migrates old
+interview-only rows on startup (`migrateProctoringSubjects`). Notifications,
 resume versioning/GitHub-LinkedIn import, deeper analytics, and voice
 interviews are not yet started. Ask if you want the full breakdown -
 it changes often enough that it's not worth freezing into this file.

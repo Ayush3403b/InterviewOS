@@ -6,9 +6,23 @@ import {
 } from "./IProctoringAgent";
 
 import {
+  ProctoredSubjectType,
   ProctoringFlagType,
   ProctoringSeverity,
 } from "../../modules/proctoring/types/proctoring.types";
+
+/**
+ * No mouse/keyboard activity before an idle flag, per subject type.
+ * An MCQ candidate legitimately sits still while reading a question,
+ * so the interview thresholds would flag every long question.
+ */
+const IDLE_THRESHOLDS_MS: Record<
+  ProctoredSubjectType,
+  { low: number; medium: number }
+> = {
+  [ProctoredSubjectType.INTERVIEW]: { low: 20_000, medium: 60_000 },
+  [ProctoredSubjectType.MCQ_ATTEMPT]: { low: 120_000, medium: 300_000 },
+};
 
 /**
  * Matched by substring against whatever labels the client's object
@@ -266,7 +280,7 @@ export class RuleBasedProctoringAgent implements IProctoringAgent {
         flags.push({
           type: ProctoringFlagType.RIGHT_CLICK_ATTEMPTED,
           severity: ProctoringSeverity.LOW,
-          message: "Candidate right-clicked during the interview.",
+          message: "Candidate right-clicked during the session.",
           confidence: 0.9,
         });
         break;
@@ -308,7 +322,7 @@ export class RuleBasedProctoringAgent implements IProctoringAgent {
         flags.push({
           type: ProctoringFlagType.CAMERA_DEVICE_LOST,
           severity: ProctoringSeverity.HIGH,
-          message: "Camera was disconnected during the interview.",
+          message: "Camera was disconnected during the session.",
           confidence: 0.95,
         });
         break;
@@ -324,7 +338,7 @@ export class RuleBasedProctoringAgent implements IProctoringAgent {
         flags.push({
           type: ProctoringFlagType.MIC_DEVICE_LOST,
           severity: ProctoringSeverity.HIGH,
-          message: "Microphone was disconnected during the interview.",
+          message: "Microphone was disconnected during the session.",
           confidence: 0.95,
         });
         break;
@@ -377,16 +391,28 @@ export class RuleBasedProctoringAgent implements IProctoringAgent {
     /*                          Behaviour Checks                          */
     /* ---------------------------------------------------------------- */
 
-    if (typeof input.idleDurationMs === "number" && input.idleDurationMs > 60_000) {
+    const idleThresholds =
+      IDLE_THRESHOLDS_MS[input.subjectType] ??
+      IDLE_THRESHOLDS_MS[ProctoredSubjectType.INTERVIEW];
+
+    if (
+      typeof input.idleDurationMs === "number" &&
+      input.idleDurationMs > idleThresholds.medium
+    ) {
       flags.push({
         type: ProctoringFlagType.IDLE_TIME_EXCEEDED,
         severity: ProctoringSeverity.MEDIUM,
-        message: "Candidate has shown no mouse or keyboard activity for over a minute.",
+        message: `Candidate has shown no mouse or keyboard activity for over ${Math.round(
+          idleThresholds.medium / 60_000
+        )} minute(s).`,
         confidence: 0.7,
         durationMs: input.idleDurationMs,
         metadata: { idleDurationMs: input.idleDurationMs },
       });
-    } else if (typeof input.idleDurationMs === "number" && input.idleDurationMs > 20_000) {
+    } else if (
+      typeof input.idleDurationMs === "number" &&
+      input.idleDurationMs > idleThresholds.low
+    ) {
       flags.push({
         type: ProctoringFlagType.IDLE_TIME_EXCEEDED,
         severity: ProctoringSeverity.LOW,
@@ -444,7 +470,7 @@ export class RuleBasedProctoringAgent implements IProctoringAgent {
       flags.push({
         type: ProctoringFlagType.TAB_SWITCHED,
         severity: ProctoringSeverity.MEDIUM,
-        message: "Candidate switched away from the interview tab/window.",
+        message: "Candidate switched away from the session tab/window.",
         confidence: 0.95,
       });
     }
@@ -489,7 +515,7 @@ export class RuleBasedProctoringAgent implements IProctoringAgent {
       flags.push({
         type: ProctoringFlagType.MULTIPLE_VOICES_DETECTED,
         severity: ProctoringSeverity.HIGH,
-        message: "Multiple voices detected during the interview.",
+        message: "Multiple voices detected during the session.",
         confidence: 0.7,
       });
     }
@@ -511,7 +537,7 @@ export class RuleBasedProctoringAgent implements IProctoringAgent {
       flags.push({
         type: ProctoringFlagType.CONNECTION_UNSTABLE,
         severity: ProctoringSeverity.LOW,
-        message: "Unstable connection detected during the interview.",
+        message: "Unstable connection detected during the session.",
         confidence: 0.5,
       });
     }
@@ -530,7 +556,7 @@ export class RuleBasedProctoringAgent implements IProctoringAgent {
       flags.push({
         type: ProctoringFlagType.PROCTORING_INIT_COMPLETED,
         severity: ProctoringSeverity.INFO,
-        message: "Pre-interview proctoring checklist completed.",
+        message: "Pre-session proctoring checklist completed.",
         confidence: 1,
       });
     } else if (input.initStatus === "failed") {
@@ -538,8 +564,8 @@ export class RuleBasedProctoringAgent implements IProctoringAgent {
         type: ProctoringFlagType.PROCTORING_INIT_FAILED,
         severity: ProctoringSeverity.MEDIUM,
         message: input.initFailureReason
-          ? `Pre-interview proctoring checklist failed: ${input.initFailureReason}.`
-          : "Pre-interview proctoring checklist failed.",
+          ? `Pre-session proctoring checklist failed: ${input.initFailureReason}.`
+          : "Pre-session proctoring checklist failed.",
         confidence: 1,
         metadata: input.initFailureReason
           ? { reason: input.initFailureReason }

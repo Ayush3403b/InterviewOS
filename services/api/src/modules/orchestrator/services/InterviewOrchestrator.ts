@@ -121,7 +121,7 @@ export class InterviewOrchestrator {
     }
 
     try {
-      const session = await this.proctoringSessionRepository.findByInterviewSession(
+      const session = await this.proctoringSessionRepository.findBySubject(
         interviewSessionId
       );
 
@@ -378,6 +378,35 @@ export class InterviewOrchestrator {
       durationSeconds
     );
 
+    await this.closeProctoringSession(sessionId);
+
     return generated;
+  }
+
+  /**
+   * Ends the interview's proctoring session so its report gets an end
+   * time/duration. Best-effort, same as getProctoringSummary - a
+   * proctoring hiccup must never fail an already-completed interview.
+   */
+  private async closeProctoringSession(interviewSessionId: string) {
+    if (!this.proctoringSessionRepository) {
+      return;
+    }
+
+    try {
+      const session = await this.proctoringSessionRepository.findBySubject(
+        interviewSessionId
+      );
+
+      if (session) {
+        await this.proctoringSessionRepository.markCompleted(session._id);
+      }
+    } catch (error) {
+      logger.warn(
+        `Closing the proctoring session failed, continuing without it: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    }
   }
 }

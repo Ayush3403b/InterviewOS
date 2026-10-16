@@ -9,6 +9,29 @@ const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
 const DEFAULT_MAX_TOKENS = 4096;
 
+/**
+ * Plain string for text-only calls (unchanged wire format); content
+ * blocks when there are attachments - images as image blocks, PDFs as
+ * document blocks, followed by the prompt text.
+ */
+function buildUserContent(options: LLMGenerateOptions) {
+  if (!options.attachments?.length) {
+    return options.prompt;
+  }
+
+  return [
+    ...options.attachments.map((attachment) => ({
+      type: attachment.mimeType === "application/pdf" ? "document" : "image",
+      source: {
+        type: "base64",
+        media_type: attachment.mimeType,
+        data: attachment.base64,
+      },
+    })),
+    { type: "text", text: options.prompt },
+  ];
+}
+
 export interface ClaudeClientConfig {
   apiKey: string;
   model: string;
@@ -57,7 +80,7 @@ export class ClaudeClient implements ILLMClient {
           model: this.config.model,
           max_tokens: options.maxTokens ?? DEFAULT_MAX_TOKENS,
           system: options.system,
-          messages: [{ role: "user", content: options.prompt }],
+          messages: [{ role: "user", content: buildUserContent(options) }],
         }),
       });
     } catch {

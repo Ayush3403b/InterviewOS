@@ -106,3 +106,23 @@ export const resumeWriterRateLimiter = rateLimit({
   keyGenerator: userKey,
   handler: rateLimitHandler,
 });
+
+const MCQ_GENERATION_WINDOW_MS = Number(
+  process.env.MCQ_GENERATION_RATE_LIMIT_WINDOW_MS ?? 10 * 60 * 1000
+);
+const MCQ_GENERATION_MAX = Number(process.env.MCQ_GENERATION_RATE_LIMIT_MAX ?? 20);
+
+/**
+ * AI question generation is the most expensive call in the app (a
+ * large batch of output, sometimes with images/PDFs as input) - same
+ * reasoning as resumeWriterRateLimiter, sized for an author building a
+ * test in a few rounds.
+ */
+export const mcqGenerationRateLimiter = rateLimit({
+  windowMs: MCQ_GENERATION_WINDOW_MS,
+  limit: MCQ_GENERATION_MAX,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: userKey,
+  handler: rateLimitHandler,
+});

@@ -16,6 +16,11 @@ import { AnalyticsPage } from "../pages/AnalyticsPage";
 import { PublicReportPage } from "../pages/PublicReportPage";
 import FlaggedSessionsPage from "../pages/FlaggedSessionsPage";
 import ProctoringSessionDetailPage from "../pages/ProctoringSessionDetailPage";
+import TestsPage from "../pages/TestsPage";
+import TestEditorPage from "../pages/TestEditorPage";
+import TestResultsPage from "../pages/TestResultsPage";
+import TestAttemptReviewPage from "../pages/TestAttemptReviewPage";
+import TakeTestPage from "../pages/TakeTestPage";
 import NotFoundPage from "../pages/NotFoundPage";
 
 import { ProtectedRoute } from "./ProtectedRoute";
@@ -109,6 +114,52 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <ProctoringSessionDetailPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/app/tests",
+    element: (
+      <ProtectedRoute>
+        <TestsPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/app/tests/:id",
+    element: (
+      <ProtectedRoute>
+        <TestEditorPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/app/tests/:id/results",
+    element: (
+      <ProtectedRoute>
+        <TestResultsPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/app/tests/:id/results/:attemptId",
+    element: (
+      <ProtectedRoute>
+        <TestAttemptReviewPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  /** The link shared with candidates - signed-out visitors log in and land back here. */
+  {
+    path: "/app/take/:code",
+    element: (
+      <ProtectedRoute>
+        <TakeTestPage />
       </ProtectedRoute>
     ),
   },

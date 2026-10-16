@@ -8,14 +8,14 @@ import {
 } from "./api";
 import type { ProctoringEventReviewStatus, ProctoringReport } from "./reportTypes";
 
-export function useProctoringReport(interviewSessionId: string) {
+export function useProctoringReport(subjectId: string) {
   return useQuery<ProctoringReport | null>({
-    queryKey: ["proctoring-report", interviewSessionId],
+    queryKey: ["proctoring-report", subjectId],
     queryFn: async () => {
       try {
-        return await getProctoringReport(interviewSessionId);
+        return await getProctoringReport(subjectId);
       } catch (error) {
-        // Not every interview has proctoring enabled/started - that's
+        // Not every interview/attempt has proctoring started - that's
         // a normal "no data" case, not a failure to surface.
         if (axios.isAxiosError(error) && error.response?.status === 404) {
           return null;
@@ -23,7 +23,7 @@ export function useProctoringReport(interviewSessionId: string) {
         throw error;
       }
     },
-    enabled: Boolean(interviewSessionId),
+    enabled: Boolean(subjectId),
   });
 }
 
@@ -32,16 +32,16 @@ export function useProctoringReport(interviewSessionId: string) {
  * the report (e.g. a standalone timeline view) - `useProctoringReport`
  * already includes the same list under `report.timeline`.
  */
-export function useProctoringTimeline(interviewSessionId: string) {
+export function useProctoringTimeline(subjectId: string) {
   return useQuery({
-    queryKey: ["proctoring-timeline", interviewSessionId],
-    queryFn: () => getProctoringTimeline(interviewSessionId),
-    enabled: Boolean(interviewSessionId),
+    queryKey: ["proctoring-timeline", subjectId],
+    queryFn: () => getProctoringTimeline(subjectId),
+    enabled: Boolean(subjectId),
   });
 }
 
 /** Recruiter review workflow - acknowledge or dismiss one event. */
-export function useUpdateProctoringEventStatus(interviewSessionId: string) {
+export function useUpdateProctoringEventStatus(subjectId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -51,13 +51,13 @@ export function useUpdateProctoringEventStatus(interviewSessionId: string) {
     }: {
       eventId: string;
       status: Extract<ProctoringEventReviewStatus, "ACKNOWLEDGED" | "DISMISSED">;
-    }) => updateProctoringEventStatus(interviewSessionId, eventId, status),
+    }) => updateProctoringEventStatus(subjectId, eventId, status),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["proctoring-report", interviewSessionId],
+        queryKey: ["proctoring-report", subjectId],
       });
       queryClient.invalidateQueries({
-        queryKey: ["proctoring-timeline", interviewSessionId],
+        queryKey: ["proctoring-timeline", subjectId],
       });
     },
   });

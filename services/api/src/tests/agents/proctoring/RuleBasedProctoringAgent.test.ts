@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import { RuleBasedProctoringAgent } from "../../../agents/proctoring/RuleBasedProctoringAgent";
-import { ProctoringFlagType } from "../../../modules/proctoring/types/proctoring.types";
+import {
+  ProctoredSubjectType,
+  ProctoringFlagType,
+} from "../../../modules/proctoring/types/proctoring.types";
 
 function baseSignal() {
   return {
-    interviewSessionId: "sess-1",
+    subjectType: ProctoredSubjectType.INTERVIEW,
+    subjectId: "sess-1",
     candidateId: "cand-1",
     timestamp: new Date(),
   };
@@ -291,6 +295,31 @@ describe("RuleBasedProctoringAgent", () => {
       });
 
       expect(result.flags).toHaveLength(0);
+
+    });
+
+    it("gives MCQ attempts a longer idle allowance, since reading a question is idle time", async () => {
+
+      const agent = new RuleBasedProctoringAgent();
+
+      const reading = await agent.analyze({
+        ...baseSignal(),
+        subjectType: ProctoredSubjectType.MCQ_ATTEMPT,
+        idleDurationMs: 90_000,
+      });
+
+      expect(reading.flags).toHaveLength(0);
+
+      const gone = await agent.analyze({
+        ...baseSignal(),
+        subjectType: ProctoredSubjectType.MCQ_ATTEMPT,
+        idleDurationMs: 400_000,
+      });
+
+      expect(
+        gone.flags.find((flag) => flag.type === ProctoringFlagType.IDLE_TIME_EXCEEDED)
+          ?.severity
+      ).toBe("MEDIUM");
 
     });
 

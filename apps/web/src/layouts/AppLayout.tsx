@@ -4,6 +4,7 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import {
   BarChart3,
   BookOpen,
+  ClipboardList,
   History,
   LayoutDashboard,
   LogOut,
@@ -27,6 +28,7 @@ const ROLE_LABELS: Record<string, string> = {
 const NAV_ITEMS = [
   { label: "Dashboard", icon: LayoutDashboard, to: "/app" },
   { label: "Interviews", icon: BookOpen, to: "/app" },
+  { label: "Tests", icon: ClipboardList, to: "/app/tests" },
   { label: "Analytics", icon: BarChart3, to: "/app/analytics" },
   { label: "History", icon: History, to: "/app" },
   { label: "Resume", icon: User2, to: "/app/resume" },
@@ -79,6 +81,12 @@ export function AppLayout({
           </div>
 
           <nav className="hidden items-center gap-6 sm:flex">
+            <Link
+              to="/app/tests"
+              className="text-sm font-medium text-ink-soft hover:text-ink transition"
+            >
+              Tests
+            </Link>
             <Link
               to="/app/resume"
               className="text-sm font-medium text-ink-soft hover:text-ink transition"

@@ -20,7 +20,6 @@ import {
 interface InterviewMediaPanelProps {
   interviewSessionId: string;
   accessToken: string;
-  organizationId?: string;
   screenShareRequired?: boolean;
   autoStartCamera?: boolean;
   consentGiven?: boolean;
@@ -30,7 +29,6 @@ interface InterviewMediaPanelProps {
 export function InterviewMediaPanel({
   interviewSessionId,
   accessToken,
-  organizationId,
   screenShareRequired = false,
   autoStartCamera = false,
   consentGiven,
@@ -53,11 +51,11 @@ export function InterviewMediaPanel({
   } = useGeolocation();
 
   const proctoring = useProctoring({
-    interviewSessionId,
+    subjectType: "INTERVIEW",
+    subjectId: interviewSessionId,
     accessToken,
     videoRef,
     stream,
-    organizationId,
     screenShareRequired,
     consentGiven,
     referenceFrame,

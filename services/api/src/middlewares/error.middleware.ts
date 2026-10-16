@@ -1,6 +1,8 @@
 import { NextFunction, Request, Response } from "express";
+import { MulterError } from "multer";
 
 import { ApiError } from "../shared/errors/ApiError";
+import { ErrorCode } from "../shared/errors/ErrorCode";
 import { ErrorTelemetry } from "../shared/telemetry/ErrorTelemetry";
 
 export function errorMiddleware(
@@ -11,6 +13,27 @@ export function errorMiddleware(
 ) {
   const requestId = req.headers["x-request-id"] as string | undefined;
   const userId = (req as any).user?.sub;
+
+  // Upload limits (file too big, too many files) are the client's
+  // problem, not a server fault - answer 413/400 instead of a 500.
+  if (error instanceof MulterError) {
+    const status = error.code === "LIMIT_FILE_SIZE" ? 413 : 400;
+
+    return res.status(status).json({
+      success: false,
+      message:
+        error.code === "LIMIT_FILE_SIZE"
+          ? "That file is too large."
+          : error.code === "LIMIT_FILE_COUNT"
+            ? "Too many files in one upload."
+            : error.message,
+      error: {
+        code: ErrorCode.BAD_REQUEST,
+        status,
+        requestId,
+      },
+    });
+  }
 
   if (error instanceof ApiError) {
     if (error.statusCode >= 500) {

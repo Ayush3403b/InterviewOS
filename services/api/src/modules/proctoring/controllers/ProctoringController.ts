@@ -14,7 +14,7 @@ import { AuditAction } from "../../audit-log/types/audit-log.types";
 import { ProctoringResponse } from "../responses/ProctoringResponse";
 
 import { StartProctoringSessionDto } from "../dtos/StartProctoringSessionDto";
-import { RecordSignalDto } from "../dtos/RecordSignalDto";
+import { RecordSignalRequestDto } from "../dtos/RecordSignalDto";
 import { UpdateEventStatusDto } from "../dtos/UpdateEventStatusDto";
 
 export default class ProctoringController extends BaseController {
@@ -39,10 +39,10 @@ export default class ProctoringController extends BaseController {
     return { userId, role: req.user?.role };
   }
 
-  private getInterviewSessionId(req: AuthenticatedRequest): string {
-    return Array.isArray(req.params.interviewSessionId)
-      ? req.params.interviewSessionId[0]
-      : req.params.interviewSessionId;
+  private getSubjectId(req: AuthenticatedRequest): string {
+    return Array.isArray(req.params.subjectId)
+      ? req.params.subjectId[0]
+      : req.params.subjectId;
   }
 
   /* -------------------------------------------------------------------------- */
@@ -56,17 +56,17 @@ export default class ProctoringController extends BaseController {
     const { userId } = this.getAuthenticatedUser(req);
 
     const {
-      interviewSessionId,
-      organizationId,
+      subjectType,
+      subjectId,
       consentGiven,
       consentVersion,
       referenceFrame,
     } = req.body as StartProctoringSessionDto;
 
     const session = await this.proctoringService.startSession(
-      interviewSessionId,
+      subjectType,
+      subjectId,
       userId,
-      organizationId,
       consentGiven,
       consentVersion,
       referenceFrame
@@ -93,12 +93,15 @@ export default class ProctoringController extends BaseController {
     res: Response
   ): Promise<void> => {
     const { userId } = this.getAuthenticatedUser(req);
-    const interviewSessionId = this.getInterviewSessionId(req);
+    const subjectId = this.getSubjectId(req);
+
+    const { subjectType, ...signal } = req.body as RecordSignalRequestDto;
 
     const result = await this.proctoringService.recordSignal(
-      interviewSessionId,
+      subjectType,
+      subjectId,
       userId,
-      req.body as RecordSignalDto
+      signal
     );
 
     this.ok(res, "Signal recorded.", {
@@ -116,10 +119,10 @@ export default class ProctoringController extends BaseController {
     res: Response
   ): Promise<void> => {
     const { userId, role } = this.getAuthenticatedUser(req);
-    const interviewSessionId = this.getInterviewSessionId(req);
+    const subjectId = this.getSubjectId(req);
 
     const session = await this.proctoringService.getSession(
-      interviewSessionId,
+      subjectId,
       userId,
       role
     );
@@ -140,13 +143,13 @@ export default class ProctoringController extends BaseController {
     res: Response
   ): Promise<void> => {
     const { userId, role } = this.getAuthenticatedUser(req);
-    const interviewSessionId = this.getInterviewSessionId(req);
+    const subjectId = this.getSubjectId(req);
 
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 50;
 
     const events = await this.proctoringService.getEvents(
-      interviewSessionId,
+      subjectId,
       userId,
       role,
       page,
@@ -169,10 +172,10 @@ export default class ProctoringController extends BaseController {
     res: Response
   ): Promise<void> => {
     const { userId, role } = this.getAuthenticatedUser(req);
-    const interviewSessionId = this.getInterviewSessionId(req);
+    const subjectId = this.getSubjectId(req);
 
     const report = await this.proctoringService.getReport(
-      interviewSessionId,
+      subjectId,
       userId,
       role
     );
@@ -193,10 +196,10 @@ export default class ProctoringController extends BaseController {
     res: Response
   ): Promise<void> => {
     const { userId, role } = this.getAuthenticatedUser(req);
-    const interviewSessionId = this.getInterviewSessionId(req);
+    const subjectId = this.getSubjectId(req);
 
     const timeline = await this.proctoringService.getTimeline(
-      interviewSessionId,
+      subjectId,
       userId,
       role
     );
@@ -217,7 +220,7 @@ export default class ProctoringController extends BaseController {
     res: Response
   ): Promise<void> => {
     const { userId, role } = this.getAuthenticatedUser(req);
-    const interviewSessionId = this.getInterviewSessionId(req);
+    const subjectId = this.getSubjectId(req);
 
     const eventId = Array.isArray(req.params.eventId)
       ? req.params.eventId[0]
@@ -226,7 +229,7 @@ export default class ProctoringController extends BaseController {
     const { status } = req.body as UpdateEventStatusDto;
 
     const event = await this.proctoringService.updateEventStatus(
-      interviewSessionId,
+      subjectId,
       eventId,
       status,
       userId,
@@ -237,7 +240,7 @@ export default class ProctoringController extends BaseController {
       action: AuditAction.PROCTORING_EVENT_STATUS_UPDATED,
       actorId: userId,
       targetId: eventId,
-      metadata: { interviewSessionId, status },
+      metadata: { subjectId, status },
       ipAddress: req.ip,
       userAgent: req.get("User-Agent"),
     });
@@ -258,10 +261,10 @@ export default class ProctoringController extends BaseController {
     res: Response
   ): Promise<void> => {
     const { userId, role } = this.getAuthenticatedUser(req);
-    const interviewSessionId = this.getInterviewSessionId(req);
+    const subjectId = this.getSubjectId(req);
 
     const session = await this.proctoringService.completeSession(
-      interviewSessionId,
+      subjectId,
       userId,
       role
     );
@@ -290,10 +293,10 @@ export default class ProctoringController extends BaseController {
     res: Response
   ): Promise<void> => {
     const { userId, role } = this.getAuthenticatedUser(req);
-    const interviewSessionId = this.getInterviewSessionId(req);
+    const subjectId = this.getSubjectId(req);
 
     const session = await this.proctoringService.terminateSession(
-      interviewSessionId,
+      subjectId,
       userId,
       role
     );
@@ -309,7 +312,7 @@ export default class ProctoringController extends BaseController {
     await this.auditLogService.record({
       action: AuditAction.PROCTORING_SESSION_TERMINATED,
       actorId: userId,
-      targetId: interviewSessionId,
+      targetId: subjectId,
       ipAddress: req.ip,
       userAgent: req.get("User-Agent"),
     });

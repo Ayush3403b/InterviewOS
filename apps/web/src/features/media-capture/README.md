@@ -25,7 +25,12 @@ polling tick:
 ```tsx
 const camera = useCameraCapture();
 const location = useGeolocation();
-const proctoring = useProctoring({ interviewSessionId, accessToken, videoRef: camera.videoRef });
+const proctoring = useProctoring({
+  subjectType: "INTERVIEW",
+  subjectId: interviewSessionId,
+  accessToken,
+  videoRef: camera.videoRef,
+});
 
 const handleStartCamera = async () => {
   await camera.start();

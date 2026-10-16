@@ -11,9 +11,12 @@ import {
 import { computeRiskDelta, RISK_SCORE_MAX } from "../services/RiskEngine";
 
 import {
+  ProctoredSubjectType,
   ProctoringSessionDocument,
   ProctoringSessionStatus,
 } from "../types/proctoring.types";
+
+const DUPLICATE_KEY_ERROR_CODE = 11000;
 
 export class ProctoringSessionRepository extends BaseRepository<ProctoringSessionDocument> {
   constructor() {
@@ -24,12 +27,25 @@ export class ProctoringSessionRepository extends BaseRepository<ProctoringSessio
   /*                                   Queries                                   */
   /* -------------------------------------------------------------------------- */
 
-  async findByInterviewSession(
-    interviewSessionId: string | Types.ObjectId
-  ) {
+  /**
+   * Looks a session up by subjectId alone - ObjectIds don't collide
+   * across collections, so the subject type isn't needed to find it.
+   */
+  async findBySubject(subjectId: string | Types.ObjectId) {
     return this.model
-      .findOne({ interviewSessionId })
+      .findOne({ subjectId })
       .populate("candidateId", "firstName lastName email avatar");
+  }
+
+  /** Batch lookup for listings - unpopulated, summary fields only. */
+  async findBySubjects(subjectIds: (string | Types.ObjectId)[]) {
+    if (!subjectIds.length) {
+      return [];
+    }
+
+    return this.model
+      .find({ subjectId: { $in: subjectIds } })
+      .select("subjectType subjectId status trustScore riskScore flaggedAt endedAt");
   }
 
   async findByOrganization(
@@ -63,8 +79,15 @@ export class ProctoringSessionRepository extends BaseRepository<ProctoringSessio
   /*                                  Mutations                                  */
   /* -------------------------------------------------------------------------- */
 
-  async getOrCreate(data: {
-    interviewSessionId: Types.ObjectId;
+  /**
+   * Two first-time calls for the same subject (the socket join racing an
+   * early one-off signal) can both miss `findBySubject`. The unique
+   * subject index rejects the second insert, so that caller just gets
+   * the row the first one created.
+   */
+  async createForSubject(data: {
+    subjectType: ProctoredSubjectType;
+    subjectId: Types.ObjectId;
     candidateId: Types.ObjectId;
     organizationId?: Types.ObjectId;
     agentProvider: string;
@@ -72,33 +95,36 @@ export class ProctoringSessionRepository extends BaseRepository<ProctoringSessio
     consentVersion?: string;
     referenceFrame?: string;
   }) {
-    const existing = await this.findByInterviewSession(
-      data.interviewSessionId
-    );
-
-    if (existing) {
-      if (data.referenceFrame && !existing.referenceFrame) {
-        existing.referenceFrame = data.referenceFrame;
-        await existing.save();
+    try {
+      await this.model.create({
+        ...data,
+        status: ProctoringSessionStatus.ACTIVE,
+        trustScore: 100,
+        riskScore: 0,
+        totalSignals: 0,
+        violationCounts: {},
+        startedAt: new Date(),
+      });
+    } catch (error) {
+      if ((error as { code?: number })?.code !== DUPLICATE_KEY_ERROR_CODE) {
+        throw error;
       }
-      return existing;
     }
 
-    return this.model.create({
-      interviewSessionId: data.interviewSessionId,
-      candidateId: data.candidateId,
-      organizationId: data.organizationId,
-      agentProvider: data.agentProvider,
-      consentGivenAt: data.consentGivenAt,
-      consentVersion: data.consentVersion,
-      referenceFrame: data.referenceFrame,
-      status: ProctoringSessionStatus.ACTIVE,
-      trustScore: 100,
-      riskScore: 0,
-      totalSignals: 0,
-      violationCounts: {},
-      startedAt: new Date(),
-    });
+    // Re-read rather than returning the created doc, so callers always
+    // get the same populated shape `findBySubject` returns.
+    return this.findBySubject(data.subjectId);
+  }
+
+  /** Only fills the reference frame in - never replaces one already on file. */
+  async setReferenceFrameIfMissing(
+    id: string | Types.ObjectId,
+    referenceFrame: string
+  ) {
+    await this.model.updateOne(
+      { _id: id, referenceFrame: { $exists: false } },
+      { referenceFrame }
+    );
   }
 
   /**
@@ -167,6 +193,11 @@ export class ProctoringSessionRepository extends BaseRepository<ProctoringSessio
 
     if (!session) {
       return null;
+    }
+
+    // Already ended (completed or terminated) - keep the original endedAt.
+    if (session.endedAt) {
+      return session;
     }
 
     return this.model.findByIdAndUpdate(

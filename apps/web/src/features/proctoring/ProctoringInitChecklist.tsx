@@ -66,6 +66,10 @@ function StepRow({ step, onRetry }: StepRowProps) {
 
 interface ProctoringInitChecklistProps extends UseProctoringInitResult {
   onReady?: () => void;
+  /** Header text - defaults to the interview wording. */
+  title?: string;
+  /** Final launch button text - defaults to the interview wording. */
+  beginLabel?: string;
 }
 
 /**
@@ -85,6 +89,8 @@ export function ProctoringInitChecklist({
   enterFullscreen,
   failureReason,
   onReady,
+  title = "Interview Readiness Check",
+  beginLabel = "Begin interview",
 }: ProctoringInitChecklistProps) {
   const fullscreenStep = steps.find((step) => step.id === "fullscreen");
   const needsFullscreen = fullscreenStep?.status !== "passed";
@@ -105,7 +111,7 @@ export function ProctoringInitChecklist({
           </span>
           <div>
             <h2 className="font-display text-base font-bold text-ink">
-              Interview Readiness Check
+              {title}
             </h2>
             <p className="text-xs text-ink-soft">
               Verifying hardware, browser permissions & AI proctoring engines
@@ -245,7 +251,7 @@ export function ProctoringInitChecklist({
                 className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-live py-3 text-sm font-bold text-white shadow-md shadow-live/25 hover:opacity-90 transition active:scale-[0.99]"
               >
                 <Play className="h-4 w-4" />
-                Begin interview
+                {beginLabel}
               </button>
             )}
 

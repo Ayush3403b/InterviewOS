@@ -19,7 +19,6 @@ export class ProctoringEventRepository extends BaseRepository<ProctoringEventDoc
 
   async recordMany(
     proctoringSessionId: Types.ObjectId,
-    interviewSessionId: Types.ObjectId,
     candidateId: Types.ObjectId,
     flags: ProctoringFlag[]
   ) {
@@ -30,7 +29,6 @@ export class ProctoringEventRepository extends BaseRepository<ProctoringEventDoc
     return this.model.insertMany(
       flags.map((flag) => ({
         proctoringSessionId,
-        interviewSessionId,
         candidateId,
         type: flag.type,
         severity: flag.severity,
@@ -92,11 +90,20 @@ export class ProctoringEventRepository extends BaseRepository<ProctoringEventDoc
     ]);
   }
 
-  /** Recruiter review workflow: mark one event acknowledged/dismissed. */
-  async updateStatus(
+  /**
+   * Recruiter review workflow: mark one event acknowledged/dismissed.
+   * Scoped to the session so an event id from a different session
+   * can't be reviewed through this one's URL.
+   */
+  async updateStatusInSession(
     eventId: string | Types.ObjectId,
+    proctoringSessionId: string | Types.ObjectId,
     status: ProctoringEventStatus
   ) {
-    return this.model.findByIdAndUpdate(eventId, { status }, { new: true });
+    return this.model.findOneAndUpdate(
+      { _id: eventId, proctoringSessionId },
+      { status },
+      { new: true }
+    );
   }
 }

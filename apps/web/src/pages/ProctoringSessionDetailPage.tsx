@@ -40,7 +40,7 @@ export default function ProctoringSessionDetailPage() {
         className="flex items-center gap-1.5 text-sm font-medium text-ink-soft hover:text-ink"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to flagged interviews
+        Back to flagged sessions
       </button>
 
       {report.isLoading && (
@@ -55,7 +55,7 @@ export default function ProctoringSessionDetailPage() {
 
       {report.isSuccess && !report.data && (
         <p className="mt-6 text-sm text-ink-soft">
-          No proctoring data exists for this interview.
+          No proctoring data exists for this session.
         </p>
       )}
 

@@ -7,6 +7,34 @@ import { ErrorCode } from "../../../shared/errors/ErrorCode";
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
+/**
+ * Plain string for text-only calls (unchanged wire format); a content
+ * array when there are attachments - images as data-URL image parts,
+ * PDFs as file parts.
+ */
+function buildUserContent(options: LLMGenerateOptions) {
+  if (!options.attachments?.length) {
+    return options.prompt;
+  }
+
+  return [
+    ...options.attachments.map((attachment) => {
+      const dataUrl = `data:${attachment.mimeType};base64,${attachment.base64}`;
+
+      return attachment.mimeType === "application/pdf"
+        ? {
+            type: "file",
+            file: {
+              filename: attachment.filename ?? "document.pdf",
+              file_data: dataUrl,
+            },
+          }
+        : { type: "image_url", image_url: { url: dataUrl } };
+    }),
+    { type: "text", text: options.prompt },
+  ];
+}
+
 export interface OpenAIClientConfig {
   apiKey: string;
   model: string;
@@ -56,7 +84,7 @@ export class OpenAIClient implements ILLMClient {
           max_tokens: options.maxTokens,
           messages: [
             { role: "system", content: options.system },
-            { role: "user", content: options.prompt },
+            { role: "user", content: buildUserContent(options) },
           ],
         }),
       });

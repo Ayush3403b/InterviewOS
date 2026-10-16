@@ -16,13 +16,6 @@ const ProctoringEventSchema = new Schema<ProctoringEventDocument>(
       index: true,
     },
 
-    interviewSessionId: {
-      type: Schema.Types.ObjectId,
-      ref: "InterviewSession",
-      required: true,
-      index: true,
-    },
-
     candidateId: {
       type: Schema.Types.ObjectId,
       ref: "User",

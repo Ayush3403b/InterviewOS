@@ -9,6 +9,9 @@ import type { RefObject } from "react";
  */
 export type ProctoringSeverity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 
+/** Mirrors ProctoredSubjectType - what a proctoring session is watching. */
+export type ProctoredSubjectType = "INTERVIEW" | "MCQ_ATTEMPT";
+
 export type ProctoringSessionStatus =
   | "ACTIVE"
   | "FLAGGED"
@@ -127,13 +130,15 @@ export interface ProctoringWarningPayload {
 }
 
 export interface ProctoringAlertPayload extends ProctoringWarningPayload {
-  interviewSessionId: string;
+  subjectType: ProctoredSubjectType;
+  subjectId: string;
   status: ProctoringSessionStatus;
 }
 
 export interface UseProctoringOptions {
-  /** The interview this tracking session belongs to. */
-  interviewSessionId: string;
+  /** What's being proctored, and its id (interview session / MCQ attempt). */
+  subjectType: ProctoredSubjectType;
+  subjectId: string;
 
   /** JWT access token used for both REST and socket auth. */
   accessToken: string;
@@ -155,10 +160,8 @@ export interface UseProctoringOptions {
   /** How often (ms) to send a signal. Defaults to 3000. */
   intervalMs?: number;
 
-  /** Whether screen share is required for this interview. */
+  /** Whether screen share is required for this session. */
   screenShareRequired?: boolean;
-
-  organizationId?: string;
 
   /** Whether the candidate provided consent. */
   consentGiven?: boolean;

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { ProctoredSubjectType } from "../types/proctoring.types";
+
 export const RecordSignalSchema = z.object({
   faceCount: z.number().min(0).max(20).optional(),
 
@@ -92,4 +94,18 @@ export const RecordSignalSchema = z.object({
   frameBase64: z.string().max(500_000).optional(),
 
   extra: z.record(z.string(), z.unknown()).optional(),
+});
+
+/**
+ * REST fallback body - the signal plus which kind of subject it's for
+ * (the subject id comes from the URL).
+ */
+export const RecordSignalRequestSchema = RecordSignalSchema.extend({
+  subjectType: z.nativeEnum(ProctoredSubjectType),
+});
+
+/** Socket payload - the signal plus the full subject reference. */
+export const SocketSignalSchema = RecordSignalSchema.extend({
+  subjectType: z.nativeEnum(ProctoredSubjectType),
+  subjectId: z.string().min(1),
 });

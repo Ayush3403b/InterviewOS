@@ -69,6 +69,10 @@ import { MockResumeWriterAgent } from "../agents/resume-writer/MockResumeWriterA
 import ResumeWriterService from "../modules/resume-writer/services/ResumeWriterService";
 import ResumeWriterController from "../modules/resume-writer/controllers/ResumeWriterController";
 
+import { LLMMcqAgent } from "../agents/mcq/LLMMcqAgent";
+import { MockMcqAgent } from "../agents/mcq/MockMcqAgent";
+import { IMcqAgent } from "../agents/mcq/IMcqAgent";
+
 import { LLMReportAgent } from "../agents/report/LLMReportAgent";
 import { MockReportAgent } from "../agents/report/MockReportAgent";
 import { IReportAgent } from "../agents/report/IReportAgent";
@@ -98,6 +102,14 @@ import { ProctoringSessionRepository } from "../modules/proctoring/repositories/
 import { ProctoringEventRepository } from "../modules/proctoring/repositories/ProctoringEventRepository";
 import ProctoringService from "../modules/proctoring/services/ProctoringService";
 import ProctoringController from "../modules/proctoring/controllers/ProctoringController";
+import { ProctoredSubjectType } from "../modules/proctoring/types/proctoring.types";
+
+import { McqTestRepository } from "../modules/mcq-test/repositories/McqTestRepository";
+import { McqAttemptRepository } from "../modules/mcq-test/repositories/McqAttemptRepository";
+import McqTestService from "../modules/mcq-test/services/McqTestService";
+import McqAttemptService from "../modules/mcq-test/services/McqAttemptService";
+import McqTestController from "../modules/mcq-test/controllers/McqTestController";
+import McqAttemptController from "../modules/mcq-test/controllers/McqAttemptController";
 
 import { AuditLogRepository } from "../modules/audit-log/repositories/AuditLogRepository";
 import AuditLogService from "../modules/audit-log/services/AuditLogService";
@@ -146,6 +158,12 @@ const coachingPlanRepository =
 
 const reportRepository =
   new ReportRepository();
+
+const mcqTestRepository =
+  new McqTestRepository();
+
+const mcqAttemptRepository =
+  new McqAttemptRepository();
 
 /**
  * Builds the ILLMClient for a single real provider. Purely local wiring
@@ -290,6 +308,18 @@ function buildReportAgent(): IReportAgent {
   });
 }
 
+function buildMcqAgent(): IMcqAgent {
+  const llmClient = resolvePrimaryLlmClient();
+
+  if (!llmClient) {
+    return new MockMcqAgent();
+  }
+
+  return new LLMMcqAgent(llmClient, {
+    validationRetryAttempts: aiConfig.validationRetryAttempts,
+  });
+}
+
 const evaluationAgent = buildEvaluationAgent();
 const questionAgent = buildQuestionAgent();
 const conversationAgent = buildConversationAgent();
@@ -298,6 +328,7 @@ const coachAgent = buildCoachAgent();
 
 const resumeWriterAgent = buildResumeWriterAgent();
 const reportAgent = buildReportAgent();
+const mcqAgent = buildMcqAgent();
 const plannerAgent = new RulePlannerAgent();
 
 const proctoringSessionRepository =
@@ -369,11 +400,47 @@ const evaluationService =
     evaluationAgent
   );  
 
+/**
+ * How proctoring confirms who a subject's candidate is before it opens a
+ * session for them - one lookup per thing that can be proctored.
+ */
 const proctoringService =
   new ProctoringService(
     proctoringSessionRepository,
     proctoringEventRepository,
-    proctoringAgent
+    proctoringAgent,
+    {
+      [ProctoredSubjectType.INTERVIEW]: async (subjectId) => {
+        const interview = await interviewSessionRepository.findById(subjectId);
+
+        return interview ? { candidateId: interview.userId.toString() } : null;
+      },
+      [ProctoredSubjectType.MCQ_ATTEMPT]: async (subjectId) => {
+        const attempt = await mcqAttemptRepository.findById(subjectId);
+
+        return attempt
+          ? {
+              candidateId: attempt.candidateId.toString(),
+              organizationId: attempt.organizationId?.toString(),
+            }
+          : null;
+      },
+    }
+  );
+
+const mcqTestService =
+  new McqTestService(
+    mcqTestRepository,
+    mcqAttemptRepository,
+    userRepository,
+    mcqAgent
+  );
+
+const mcqAttemptService =
+  new McqAttemptService(
+    mcqAttemptRepository,
+    mcqTestRepository,
+    proctoringService
   );
 
 const auditLogService =
@@ -484,6 +551,12 @@ const orchestratorController =
 const telemetryController =
   new TelemetryController();
 
+const mcqTestController =
+  new McqTestController(mcqTestService, mcqAttemptService);
+
+const mcqAttemptController =
+  new McqAttemptController(mcqAttemptService);
+
 export {
   userRepository,
 
@@ -590,4 +663,16 @@ export {
   codeSandboxService,
 
   codingController,
+
+  mcqTestRepository,
+
+  mcqAttemptRepository,
+
+  mcqTestService,
+
+  mcqAttemptService,
+
+  mcqTestController,
+
+  mcqAttemptController,
 };

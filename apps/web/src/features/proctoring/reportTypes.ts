@@ -1,3 +1,5 @@
+import type { ProctoredSubjectType } from "./types";
+
 export type ProctoringSessionState =
   | "ACTIVE"
   | "FLAGGED"
@@ -21,7 +23,9 @@ export type RiskLevel = "low" | "medium" | "high" | "critical";
 /** Mirrors ProctoringResponse.toSessionResponse (backend). */
 export interface ProctoringSessionSummary {
   id: string;
-  interviewSessionId: string;
+  subjectType: ProctoredSubjectType;
+  /** The interview session / MCQ attempt this session watched. */
+  subjectId: string;
   candidateId: string;
   candidateName?: string;
   candidateEmail?: string;

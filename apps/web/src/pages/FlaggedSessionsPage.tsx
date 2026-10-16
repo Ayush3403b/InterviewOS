@@ -4,10 +4,15 @@ import { AlertTriangle, ShieldAlert } from "lucide-react";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuthStore } from "../features/auth/store";
 import { useFlaggedSessions } from "../features/proctoring";
-import type { RiskLevel } from "../features/proctoring";
+import type { ProctoredSubjectType, RiskLevel } from "../features/proctoring";
 import { getApiErrorMessage } from "../lib/apiClient";
 
 const ELEVATED_ROLES = ["recruiter", "faculty", "admin", "super_admin"];
+
+const SUBJECT_LABELS: Record<ProctoredSubjectType, string> = {
+  INTERVIEW: "Interview",
+  MCQ_ATTEMPT: "MCQ test",
+};
 
 const RISK_STYLES: Record<RiskLevel, string> = {
   low: "bg-live/10 text-live",
@@ -48,12 +53,12 @@ export default function FlaggedSessionsPage() {
       <div className="flex items-center gap-2">
         <ShieldAlert className="h-5 w-5 text-warn" />
         <h1 className="font-display text-2xl font-semibold text-ink">
-          Flagged interviews
+          Flagged sessions
         </h1>
       </div>
       <p className="mt-1 text-sm text-ink-soft">
-        Interviews where proctoring detected enough risk to warrant a
-        manual look.
+        Interviews and tests where proctoring detected enough risk to
+        warrant a manual look.
       </p>
 
       <div className="mt-6">
@@ -70,7 +75,7 @@ export default function FlaggedSessionsPage() {
         {flaggedSessions.isSuccess && flaggedSessions.data.length === 0 && (
           <div className="rounded-xl border border-dashed border-line px-4 py-10 text-center">
             <p className="text-sm text-ink-soft">
-              No flagged interviews right now.
+              No flagged sessions right now.
             </p>
           </div>
         )}
@@ -85,7 +90,7 @@ export default function FlaggedSessionsPage() {
               return (
                 <Link
                   key={session.id}
-                  to={`/app/proctoring/sessions/${session.interviewSessionId}`}
+                  to={`/app/proctoring/sessions/${session.subjectId}`}
                   className="flex items-center justify-between gap-4 rounded-xl border border-line bg-panel px-4 py-3.5 transition hover:border-signal/40"
                 >
                   <div className="min-w-0 flex items-center gap-3">
@@ -111,6 +116,7 @@ export default function FlaggedSessionsPage() {
                         )}
                       </p>
                       <p className="mt-0.5 text-xs text-ink-soft">
+                        {SUBJECT_LABELS[session.subjectType]} ·{" "}
                         {violationTotal} violation{violationTotal === 1 ? "" : "s"}{" "}
                         · {session.totalSignals} signals ·{" "}
                         {session.flaggedAt

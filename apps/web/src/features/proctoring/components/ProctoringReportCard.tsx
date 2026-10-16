@@ -269,7 +269,7 @@ export function ProctoringReportCard({
         </div>
       ) : (
         <p className="text-sm text-ink-soft">
-          No violations recorded during this interview.
+          No violations recorded during this session.
         </p>
       )}
 

@@ -12,64 +12,64 @@ interface ApiEnvelope<T> {
   data: T;
 }
 
-/** Mirrors GET /api/v1/proctoring/sessions/:interviewSessionId. */
+/** Mirrors GET /api/v1/proctoring/sessions/:subjectId. */
 export async function getProctoringSession(
-  interviewSessionId: string
+  subjectId: string
 ): Promise<ProctoringSessionSummary> {
   const res = await apiClient.get<ApiEnvelope<ProctoringSessionSummary>>(
-    `/proctoring/sessions/${interviewSessionId}`
+    `/proctoring/sessions/${subjectId}`
   );
   return res.data.data;
 }
 
-/** Mirrors GET /api/v1/proctoring/sessions/:interviewSessionId/events. */
+/** Mirrors GET /api/v1/proctoring/sessions/:subjectId/events. */
 export async function getProctoringEvents(
-  interviewSessionId: string
+  subjectId: string
 ): Promise<ProctoringEventSummary[]> {
   const res = await apiClient.get<ApiEnvelope<ProctoringEventSummary[]>>(
-    `/proctoring/sessions/${interviewSessionId}/events`
+    `/proctoring/sessions/${subjectId}/events`
   );
   return res.data.data;
 }
 
-/** Mirrors GET /api/v1/proctoring/sessions/:interviewSessionId/report. */
+/** Mirrors GET /api/v1/proctoring/sessions/:subjectId/report. */
 export async function getProctoringReport(
-  interviewSessionId: string
+  subjectId: string
 ): Promise<ProctoringReport> {
   const res = await apiClient.get<ApiEnvelope<ProctoringReport>>(
-    `/proctoring/sessions/${interviewSessionId}/report`
+    `/proctoring/sessions/${subjectId}/report`
   );
   return res.data.data;
 }
 
 /**
- * Mirrors GET /api/v1/proctoring/sessions/:interviewSessionId/timeline -
+ * Mirrors GET /api/v1/proctoring/sessions/:subjectId/timeline -
  * the full chronological event history, distinct from the paginated
  * `getProctoringEvents` above. The report already includes this same
  * list, so prefer `useProctoringReport` unless you specifically need
  * the timeline without the rest of the report.
  */
 export async function getProctoringTimeline(
-  interviewSessionId: string
+  subjectId: string
 ): Promise<ProctoringEventSummary[]> {
   const res = await apiClient.get<ApiEnvelope<ProctoringEventSummary[]>>(
-    `/proctoring/sessions/${interviewSessionId}/timeline`
+    `/proctoring/sessions/${subjectId}/timeline`
   );
   return res.data.data;
 }
 
 /**
- * Mirrors PATCH /api/v1/proctoring/sessions/:interviewSessionId/events/:eventId/status.
+ * Mirrors PATCH /api/v1/proctoring/sessions/:subjectId/events/:eventId/status.
  * Recruiter/org-staff only - the backend enforces this regardless of
  * who calls it.
  */
 export async function updateProctoringEventStatus(
-  interviewSessionId: string,
+  subjectId: string,
   eventId: string,
   status: Extract<ProctoringEventReviewStatus, "ACKNOWLEDGED" | "DISMISSED">
 ): Promise<ProctoringEventSummary> {
   const res = await apiClient.patch<ApiEnvelope<ProctoringEventSummary>>(
-    `/proctoring/sessions/${interviewSessionId}/events/${eventId}/status`,
+    `/proctoring/sessions/${subjectId}/events/${eventId}/status`,
     { status }
   );
   return res.data.data;

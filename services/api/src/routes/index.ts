@@ -18,6 +18,8 @@ import reportRoutes from "../modules/report/routes/ReportRoutes";
 import auditLogRoutes from "../modules/audit-log/routes/AuditLogRoutes";
 import telemetryRoutes from "../modules/telemetry/routes/TelemetryRoutes";
 import { codingRoutes } from "../modules/coding";
+import mcqTestRoutes from "../modules/mcq-test/routes/McqTestRoutes";
+import mcqAttemptRoutes from "../modules/mcq-test/routes/McqAttemptRoutes";
 const router = Router();
 
 router.use("/health", healthRoutes);
@@ -55,5 +57,9 @@ router.use("/audit-logs", auditLogRoutes);
 router.use("/telemetry", telemetryRoutes);
 
 router.use("/coding", codingRoutes);
+
+router.use("/mcq-tests", mcqTestRoutes);
+
+router.use("/mcq-attempts", mcqAttemptRoutes);
 
 export default router;

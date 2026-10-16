@@ -1,9 +1,28 @@
+/**
+ * A file sent alongside the prompt - an image (photo/screenshot of a
+ * page) or a PDF. Every provider client here passes these to a model
+ * that reads them natively, so scanned pages need no separate OCR step.
+ */
+export interface LLMAttachment {
+  /** "image/jpeg" | "image/png" | "image/webp" | "application/pdf". */
+  mimeType: string;
+
+  /** The raw file bytes, base64-encoded (no `data:` prefix). */
+  base64: string;
+
+  /** Original filename - some providers want one for documents. */
+  filename?: string;
+}
+
 export interface LLMGenerateOptions {
   /** System/instruction prompt. */
   system: string;
 
   /** The actual task prompt (e.g. the interview transcript to evaluate). */
   prompt: string;
+
+  /** Files the model should read along with `prompt`. */
+  attachments?: LLMAttachment[];
 
   /** Upper bound on output tokens. Providers may apply their own default. */
   maxTokens?: number;

@@ -168,3 +168,99 @@ describe("GeminiClient", () => {
   });
 
 });
+
+describe("attachments", () => {
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const image = { mimeType: "image/png", base64: "aW1n", filename: "page.png" };
+  const pdf = { mimeType: "application/pdf", base64: "cGRm", filename: "notes.pdf" };
+
+  function sentBody(fetchMock: ReturnType<typeof vi.fn>) {
+    return JSON.parse(fetchMock.mock.calls[0][1].body as string);
+  }
+
+  it("Claude sends images and PDFs as content blocks ahead of the prompt", async () => {
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({ content: [{ type: "text", text: "ok" }], model: "m" })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await new ClaudeClient({ apiKey: "k", model: "m", retry: RETRY }).generate({
+      system: "s",
+      prompt: "p",
+      attachments: [image, pdf],
+    });
+
+    expect(sentBody(fetchMock).messages[0].content).toEqual([
+      { type: "image", source: { type: "base64", media_type: "image/png", data: "aW1n" } },
+      { type: "document", source: { type: "base64", media_type: "application/pdf", data: "cGRm" } },
+      { type: "text", text: "p" },
+    ]);
+
+  });
+
+  it("OpenAI sends images as image_url parts and PDFs as file parts", async () => {
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({ choices: [{ message: { content: "ok" } }], model: "m" })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await new OpenAIClient({ apiKey: "k", model: "m", retry: RETRY }).generate({
+      system: "s",
+      prompt: "p",
+      attachments: [image, pdf],
+    });
+
+    expect(sentBody(fetchMock).messages[1].content).toEqual([
+      { type: "image_url", image_url: { url: "data:image/png;base64,aW1n" } },
+      {
+        type: "file",
+        file: { filename: "notes.pdf", file_data: "data:application/pdf;base64,cGRm" },
+      },
+      { type: "text", text: "p" },
+    ]);
+
+  });
+
+  it("Gemini sends attachments as inlineData parts", async () => {
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({ candidates: [{ content: { parts: [{ text: "ok" }] } }] })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await new GeminiClient({ apiKey: "k", model: "m", retry: RETRY }).generate({
+      system: "s",
+      prompt: "p",
+      attachments: [pdf],
+    });
+
+    expect(sentBody(fetchMock).contents[0].parts).toEqual([
+      { inlineData: { mimeType: "application/pdf", data: "cGRm" } },
+      { text: "p" },
+    ]);
+
+  });
+
+  it("keeps the plain-string message format when there are no attachments", async () => {
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({ content: [{ type: "text", text: "ok" }], model: "m" })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await new ClaudeClient({ apiKey: "k", model: "m", retry: RETRY }).generate({
+      system: "s",
+      prompt: "p",
+    });
+
+    expect(sentBody(fetchMock).messages[0].content).toBe("p");
+
+  });
+
+});

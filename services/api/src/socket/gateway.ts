@@ -8,8 +8,8 @@ import { proctoringService } from "../container";
 import { registerVoiceGateway } from "./voiceGateway";
 
 import { UserRole } from "../modules/users/types/user.types";
-import { RecordSignalDto } from "../modules/proctoring/dtos/RecordSignalDto";
-import { RecordSignalSchema } from "../modules/proctoring/validations/RecordSignal.validation";
+import { SocketSignalSchema } from "../modules/proctoring/validations/RecordSignal.validation";
+import { StartProctoringSessionSchema } from "../modules/proctoring/validations/StartProctoringSession.validation";
 import { SlidingWindowRateLimiter } from "../shared/security/SlidingWindowRateLimiter";
 
 /**
@@ -32,12 +32,14 @@ const WATCHER_ROLES: UserRole[] = [
   UserRole.SUPER_ADMIN,
 ];
 
-function watchRoom(interviewSessionId: string): string {
-  return `interview:${interviewSessionId}:watchers`;
+/** Rooms are keyed by subjectId alone - ObjectIds don't collide across
+ *  interviews and MCQ attempts. */
+function watchRoom(subjectId: string): string {
+  return `proctoring:${subjectId}:watchers`;
 }
 
-function candidateRoom(interviewSessionId: string): string {
-  return `interview:${interviewSessionId}`;
+function candidateRoom(subjectId: string): string {
+  return `proctoring:${subjectId}`;
 }
 
 /**
@@ -74,8 +76,9 @@ export function registerSocketGateways(io: Server): void {
  * Continuous tracking channel.
  *
  * Flow:
- *  1. Candidate client connects, joins `interview:<id>`, and starts
- *     a proctoring session.
+ *  1. Candidate client connects, joins `proctoring:<subjectId>` (an
+ *     interview session or MCQ attempt), and starts a proctoring
+ *     session - ProctoringService confirms they own that subject.
  *  2. Every few seconds it emits "proctoring:signal" with derived
  *     client-side detections (face/gaze/tab/objects/audio - never
  *     raw continuous video).
@@ -84,8 +87,8 @@ export function registerSocketGateways(io: Server): void {
  *       - low/medium flags are echoed back to the candidate as a
  *         gentle "proctoring:warning" (e.g. "please stay in frame")
  *       - any flag is broadcast to recruiters/org staff watching
- *         that interview as "proctoring:alert", for live monitoring.
- *  4. Recruiter/org dashboards connect and join the same interview's
+ *         that subject as "proctoring:alert", for live monitoring.
+ *  4. Recruiter/org dashboards connect and join the same subject's
  *     watcher room to receive those alerts live.
  */
 function registerProctoringGateway(io: Server): void {
@@ -106,123 +109,119 @@ function registerProctoringGateway(io: Server): void {
 
     logger.info(`Proctoring socket connected: ${socket.id} (user: ${user.sub})`);
 
-    socket.on(
-      "proctoring:join",
-      async (payload: {
-        interviewSessionId: string;
-        organizationId?: string;
-        consentGiven?: boolean;
-        consentVersion?: string;
-        referenceFrame?: string;
-      }) => {
-        try {
-          const {
-            interviewSessionId,
-            organizationId,
+    socket.on("proctoring:join", async (payload: unknown) => {
+      try {
+        // Sockets bypass the Express validation middleware - same schema
+        // as POST /proctoring/sessions (including the referenceFrame cap).
+        const parsed = StartProctoringSessionSchema.safeParse(payload);
+
+        if (!parsed.success) {
+          socket.emit("proctoring:error", {
+            message: "Invalid proctoring join payload.",
+          });
+          return;
+        }
+
+        const {
+          subjectType,
+          subjectId,
+          consentGiven,
+          consentVersion,
+          referenceFrame,
+        } = parsed.data;
+
+        if (WATCHER_ROLES.includes(user.role)) {
+          // Recruiter/org staff observing a live session.
+          socket.join(watchRoom(subjectId));
+        } else {
+          // Candidate being proctored - start/resume tracking. Throws
+          // (-> proctoring:error) unless they own the subject.
+          await proctoringService.startSession(
+            subjectType,
+            subjectId,
+            user.sub,
             consentGiven,
             consentVersion,
-            referenceFrame,
-          } = payload;
+            referenceFrame
+          );
 
-          if (WATCHER_ROLES.includes(user.role)) {
-            // Recruiter/org staff observing a live interview.
-            socket.join(watchRoom(interviewSessionId));
-          } else {
-            // Candidate taking the interview - start/resume tracking.
-            socket.join(candidateRoom(interviewSessionId));
-
-            await proctoringService.startSession(
-              interviewSessionId,
-              user.sub,
-              organizationId,
-              consentGiven,
-              consentVersion,
-              referenceFrame
-            );
-          }
-
-          socket.emit("proctoring:joined", { interviewSessionId });
-        } catch (error) {
-          socket.emit("proctoring:error", {
-            message: (error as Error).message,
-          });
+          socket.join(candidateRoom(subjectId));
         }
+
+        socket.emit("proctoring:joined", { subjectType, subjectId });
+      } catch (error) {
+        socket.emit("proctoring:error", {
+          message: (error as Error).message,
+        });
       }
-    );
+    });
 
-    socket.on(
-      "proctoring:signal",
-      async (
-        payload: RecordSignalDto & { interviewSessionId: string }
-      ) => {
-        try {
-          if (!signalRateLimiter.consume(user.sub)) {
-            socket.emit("proctoring:error", {
-              message: "Too many signals sent too quickly. Slowing down.",
-            });
-            return;
-          }
+    socket.on("proctoring:signal", async (payload: unknown) => {
+      try {
+        if (!signalRateLimiter.consume(user.sub)) {
+          socket.emit("proctoring:error", {
+            message: "Too many signals sent too quickly. Slowing down.",
+          });
+          return;
+        }
 
-          const { interviewSessionId, ...rawSignal } = payload ?? {};
+        // Sockets bypass the Express validation middleware, so this
+        // is the only place enforcing shape/size limits (e.g. the
+        // frameBase64 cap) on this, the primary signal-ingestion
+        // path - the REST route in ProctoringRoutes.ts is a fallback.
+        const parsed = SocketSignalSchema.safeParse(payload);
 
-          if (!interviewSessionId || typeof interviewSessionId !== "string") {
-            socket.emit("proctoring:error", {
-              message: "interviewSessionId is required.",
-            });
-            return;
-          }
+        if (!parsed.success) {
+          socket.emit("proctoring:error", {
+            message: "Invalid proctoring signal payload.",
+          });
+          return;
+        }
 
-          // Sockets bypass the Express validation middleware, so this
-          // is the only place enforcing shape/size limits (e.g. the
-          // frameBase64 cap) on this, the primary signal-ingestion
-          // path - the REST route in ProctoringRoutes.ts is a fallback.
-          const parsed = RecordSignalSchema.safeParse(rawSignal);
+        const { subjectType, subjectId, ...signal } = parsed.data;
 
-          if (!parsed.success) {
-            socket.emit("proctoring:error", {
-              message: "Invalid proctoring signal payload.",
-            });
-            return;
-          }
+        const result = await proctoringService.recordSignal(
+          subjectType,
+          subjectId,
+          user.sub,
+          signal
+        );
 
-          const result = await proctoringService.recordSignal(
-            interviewSessionId,
-            user.sub,
-            parsed.data
-          );
+        if (!result.flags.length) {
+          return;
+        }
 
-          if (!result.flags.length) {
-            return;
-          }
+        const gentleFlags = result.flags.filter(
+          (flag) => flag.severity === "LOW" || flag.severity === "MEDIUM"
+        );
 
-          const gentleFlags = result.flags.filter(
-            (flag) => flag.severity === "LOW" || flag.severity === "MEDIUM"
-          );
-
-          if (gentleFlags.length) {
-            socket.emit("proctoring:warning", {
-              flags: gentleFlags,
-              trustScore: result.session.trustScore,
-            });
-          }
-
-          namespace.to(watchRoom(interviewSessionId)).emit("proctoring:alert", {
-            interviewSessionId,
-            flags: result.flags,
+        if (gentleFlags.length) {
+          socket.emit("proctoring:warning", {
+            flags: gentleFlags,
             trustScore: result.session.trustScore,
-            status: result.session.status,
-          });
-        } catch (error) {
-          socket.emit("proctoring:error", {
-            message: (error as Error).message,
           });
         }
-      }
-    );
 
-    socket.on("proctoring:leave", (payload: { interviewSessionId: string }) => {
-      socket.leave(candidateRoom(payload.interviewSessionId));
-      socket.leave(watchRoom(payload.interviewSessionId));
+        namespace.to(watchRoom(subjectId)).emit("proctoring:alert", {
+          subjectType,
+          subjectId,
+          flags: result.flags,
+          trustScore: result.session.trustScore,
+          status: result.session.status,
+        });
+      } catch (error) {
+        socket.emit("proctoring:error", {
+          message: (error as Error).message,
+        });
+      }
+    });
+
+    socket.on("proctoring:leave", (payload: { subjectId?: string }) => {
+      if (typeof payload?.subjectId !== "string") {
+        return;
+      }
+      socket.leave(candidateRoom(payload.subjectId));
+      socket.leave(watchRoom(payload.subjectId));
     });
 
     socket.on("disconnect", () => {

@@ -5,6 +5,15 @@ detection **on-device** and streams only small derived signals to
 the backend over Socket.IO — never raw video — which is what keeps
 this scalable.
 
+Proctoring is subject-agnostic: every hook takes a `subjectType`
+(`"INTERVIEW"` or `"MCQ_ATTEMPT"`) and that subject's `subjectId`
+(the interview session id / MCQ attempt id). The backend checks the
+signed-in user is that subject's candidate before it opens a session.
+The interview room and the MCQ test room (`features/mcq-test`) are the
+two consumers - both use `ProctoringGate` for the readiness check and
+`useFullscreenEnforcement` + `FullscreenWarningOverlay` for the
+fullscreen-exit rules.
+
 ## Pre-interview readiness checklist
 
 Before tracking starts, run `useProctoringInit()` to gate the
@@ -18,7 +27,12 @@ import { useProctoringInit, ProctoringInitChecklist, useProctoring } from "@/fea
 
 function PreInterviewGate({ interviewSessionId, accessToken, onReady }: Props) {
   const init = useProctoringInit();
-  const proctoring = useProctoring({ interviewSessionId, accessToken, videoRef: init.videoRef });
+  const proctoring = useProctoring({
+    subjectType: "INTERVIEW",
+    subjectId: interviewSessionId,
+    accessToken,
+    videoRef: init.videoRef,
+  });
 
   return (
     <ProctoringInitChecklist
@@ -74,7 +88,8 @@ Two steps are best-effort by nature, not hard guarantees:
 
 ```tsx
 const proctoring = useProctoring({
-  interviewSessionId,
+  subjectType: "INTERVIEW",
+  subjectId: interviewSessionId,
   accessToken,
   videoRef,
   stream, // same MediaStream backing videoRef
@@ -120,6 +135,7 @@ a recommendation, and the full evidence timeline.
 import { useProctoringReport, ProctoringReportCard } from "@/features/proctoring";
 
 function InterviewReportSection({ interviewSessionId, isRecruiter }: Props) {
+  // Reports are looked up by subject id - an interview id or an MCQ attempt id.
   const { data: report } = useProctoringReport(interviewSessionId);
   if (!report) return null; // proctoring wasn't enabled for this interview
 
@@ -199,7 +215,8 @@ function InterviewRoom({ interviewSessionId, accessToken }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const proctoring = useProctoring({
-    interviewSessionId,
+    subjectType: "INTERVIEW",
+    subjectId: interviewSessionId,
     accessToken,
     videoRef,
     intervalMs: 3000,       // how often to send a signal
