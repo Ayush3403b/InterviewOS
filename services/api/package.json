@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "prebuild": "tsc -p ../../packages/types/tsconfig.json",
     "build": "tsc",
     "check:routes": "node ../../scripts/check-routes.js",
     "test": "vitest run",

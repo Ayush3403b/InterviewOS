@@ -55,7 +55,7 @@ export interface JDMatchResult {
   recommendations: string[];
 }
 
-import {
+import type {
   GenerateResumeRequestDto,
   GeneratedResumeResultDto,
   AiOptimizeResumeResultDto,

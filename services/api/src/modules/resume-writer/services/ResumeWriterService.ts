@@ -11,7 +11,7 @@ import {
 } from "../../../agents/resume-writer/IResumeWriterAgent";
 import { buildResumePdf, ExportResumeDto } from "../../../shared/pdf/buildResumePdf";
 import { ResumeRepository } from "../../resume/repositories/ResumeRepository";
-import {
+import type {
   GenerateResumeRequestDto,
   GeneratedResumeResultDto,
   AiOptimizeResumeRequestDto,

@@ -18,7 +18,7 @@ import { deriveResumeInsights } from "../../../agents/resume/analysis/deriveResu
 import { compareResumes, ResumeComparison } from "./ResumeComparator";
 import { SocialSyncService } from "./SocialSyncService";
 import InterviewContextService from "../../interview-context/services/InterviewContextService";
-import { GitHubImportDto, LinkedInImportDto, UpdateResumeDto, GitHubRepositoryItemDto } from "@interviewos/types";
+import type { GitHubImportDto, LinkedInImportDto, UpdateResumeDto, GitHubRepositoryItemDto } from "@interviewos/types";
 
 export interface UploadedResumeFile {
   buffer: Buffer;

@@ -1,4 +1,4 @@
-import { SocialProfileSyncResult, GitHubRepositoryItemDto } from "@interviewos/types";
+import type { SocialProfileSyncResult, GitHubRepositoryItemDto } from "@interviewos/types";
 import { logger } from "../../../shared/logger/logger";
 import { ApiError } from "../../../shared/errors/ApiError";
 import { ErrorCode } from "../../../shared/errors/ErrorCode";
