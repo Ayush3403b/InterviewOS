@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import axios from "axios";
+
 import { fetchGitHubRepos } from "../api";
 
 export interface SelectedGitHubProject {
@@ -52,9 +54,12 @@ export const GitHubProjectSelector: React.FC<GitHubProjectSelectorProps> = ({
       const fetched = await fetchGitHubRepos(githubUsername.trim());
       setRepos(fetched);
       setHasFetched(true);
-    } catch (err: any) {
+    } catch (err) {
+      const body = axios.isAxiosError(err)
+        ? (err.response?.data as { message?: string } | undefined)
+        : undefined;
       setError(
-        err.response?.data?.message ||
+        body?.message ||
           "Failed to fetch repositories. Please check the username or try again later."
       );
     } finally {

@@ -1,15 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { X, Sparkles, Loader2, Download, ShieldCheck, Award, Briefcase, FileText, Code2, Globe, GraduationCap, CheckCircle2 } from "lucide-react";
 import { generateAIResume, exportResumePdf } from "../api";
 import { GitHubProjectSelector, type SelectedGitHubProject } from "./GitHubProjectSelector";
 import type { ResumeAnalysis } from "../../resume/types";
+import type { GeneratedResume } from "../types";
+import { getApiErrorMessage } from "../../../lib/apiClient";
 
 interface AIResumeGeneratorModalProps {
   isOpen: boolean;
   onClose: () => void;
   resumeId?: string;
   currentResume?: ResumeAnalysis | null;
-  onGenerated?: (resumeData: any) => void;
+  onGenerated?: (resumeData: GeneratedResume) => void;
 }
 
 export function AIResumeGeneratorModal({
@@ -41,22 +43,26 @@ export function AIResumeGeneratorModal({
 
   const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [generatedResult, setGeneratedResult] = useState<any | null>(null);
+  const [generatedResult, setGeneratedResult] = useState<GeneratedResume | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (currentResume) {
-      if (currentResume.extractedSkills?.length) {
-        setSkillsInput(currentResume.extractedSkills.join(", "));
-      }
-      if (currentResume.experience?.[0]?.title) {
-        setTargetRole(currentResume.experience[0].title);
-      }
-      if (currentResume.summary) {
-        setBackgroundNotes(currentResume.summary);
-      }
+  // Prefill from the resume whenever a different one is passed in.
+  // Adjusted during render (React's "storing information from previous
+  // renders" pattern) instead of an effect, which would render twice.
+  const [prefilledFrom, setPrefilledFrom] = useState<ResumeAnalysis | null>(null);
+
+  if (currentResume && currentResume !== prefilledFrom) {
+    setPrefilledFrom(currentResume);
+    if (currentResume.extractedSkills?.length) {
+      setSkillsInput(currentResume.extractedSkills.join(", "));
     }
-  }, [currentResume]);
+    if (currentResume.experience?.[0]?.title) {
+      setTargetRole(currentResume.experience[0].title);
+    }
+    if (currentResume.summary) {
+      setBackgroundNotes(currentResume.summary);
+    }
+  }
 
   if (!isOpen) return null;
 
@@ -89,8 +95,8 @@ export function AIResumeGeneratorModal({
 
       setGeneratedResult(result);
       if (onGenerated) onGenerated(result);
-    } catch (err: any) {
-      setError(err?.response?.data?.message || err.message || "Failed to generate resume");
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Failed to generate resume"));
     } finally {
       setIsLoading(false);
     }
@@ -107,7 +113,7 @@ export function AIResumeGeneratorModal({
         github: generatedResult.github || (githubUsername.trim() ? `https://github.com/${githubUsername.trim()}` : undefined),
         summary: generatedResult.summary,
         skills: generatedResult.skills,
-        experience: (generatedResult.experience || []).map((exp: any) => ({
+        experience: (generatedResult.experience || []).map((exp) => ({
           title: exp.title,
           company: exp.company,
           duration: exp.duration,
@@ -128,8 +134,8 @@ export function AIResumeGeneratorModal({
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-    } catch (err: any) {
-      setError(err?.message || "Failed to download PDF");
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Failed to download PDF"));
     } finally {
       setIsExporting(false);
     }
@@ -412,7 +418,7 @@ export function AIResumeGeneratorModal({
                   Professional Experience (STAR Formatted)
                 </h4>
                 <div className="flex flex-col gap-3">
-                  {(generatedResult.experience || []).map((exp: any, i: number) => (
+                  {(generatedResult.experience || []).map((exp, i) => (
                     <div key={i} className="rounded-lg bg-slate-900/60 p-3 border border-slate-800">
                       <div className="flex items-center justify-between text-xs font-semibold text-white mb-1">
                         <span>{exp.title} • <span className="text-slate-400 font-normal">{exp.company}</span></span>
@@ -435,7 +441,7 @@ export function AIResumeGeneratorModal({
                     Key Featured Projects
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                    {generatedResult.projects.map((proj: any, i: number) => (
+                    {generatedResult.projects.map((proj, i) => (
                       <div key={i} className="rounded-lg bg-slate-900/60 p-3 border border-slate-800 flex flex-col justify-between">
                         <div>
                           <div className="flex items-center justify-between text-xs font-semibold text-white mb-1">
@@ -477,7 +483,7 @@ export function AIResumeGeneratorModal({
                     Verified Education Credentials
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {generatedResult.education.map((edu: any, i: number) => (
+                    {generatedResult.education.map((edu, i) => (
                       <div key={i} className="rounded-lg bg-slate-900/60 p-3 border border-slate-800">
                         <div className="flex items-center justify-between text-xs font-semibold text-white">
                           <span>{edu.degree}</span>

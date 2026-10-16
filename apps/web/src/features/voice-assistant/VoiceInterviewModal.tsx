@@ -1,7 +1,10 @@
-import { useState, useEffect } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import { Mic, MicOff, Volume2, VolumeX, X, Radio, Sparkles, MessageSquare } from "lucide-react";
 import { VoiceAssistantVisualizer } from "./VoiceAssistantVisualizer";
 import { useVoiceAssistant } from "./useVoiceAssistant";
+
+const WELCOME_MESSAGE =
+  "Welcome! Speak naturally into your microphone when you are ready to answer.";
 
 interface VoiceInterviewModalProps {
   isOpen: boolean;
@@ -17,9 +20,7 @@ export function VoiceInterviewModal({
   onAnswerSubmit,
 }: VoiceInterviewModalProps) {
   const [candidateTranscript, setCandidateTranscript] = useState("");
-  const [aiMessage, setAiMessage] = useState(
-    "Welcome! Speak naturally into your microphone when you are ready to answer."
-  );
+  const aiMessage = isOpen && currentQuestion ? currentQuestion : WELCOME_MESSAGE;
 
   const voice = useVoiceAssistant({
     onTranscriptSegment: (text: string, isFinal: boolean) => {
@@ -29,13 +30,18 @@ export function VoiceInterviewModal({
     },
   });
 
-  useEffect(() => {
-    if (isOpen && currentQuestion) {
-      voice.speakQuestion(currentQuestion);
-      setAiMessage(currentQuestion);
+  // Effect event: reads the latest `voice` without re-running (and
+  // re-speaking) every time the hook hands back a new object.
+  const syncSpeech = useEffectEvent((open: boolean, question: string) => {
+    if (open && question) {
+      voice.speakQuestion(question);
     } else {
       voice.stopSpeaking();
     }
+  });
+
+  useEffect(() => {
+    syncSpeech(isOpen, currentQuestion);
   }, [isOpen, currentQuestion]);
 
   if (!isOpen) return null;

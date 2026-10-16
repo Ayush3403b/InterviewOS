@@ -18,6 +18,8 @@ declare global {
   }
 
   interface SpeechRecognitionEventLike extends Event {
+    /** Index of the first result that changed in this event. */
+    resultIndex?: number;
     results: {
       [index: number]: {
         [index: number]: { transcript: string };

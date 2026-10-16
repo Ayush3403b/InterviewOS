@@ -31,7 +31,10 @@ export interface ApiErrorBody {
   error: { code: string; status: number };
 }
 
-export function getApiErrorMessage(error: unknown): string {
+export function getApiErrorMessage(
+  error: unknown,
+  fallback = "Something went wrong. Please try again."
+): string {
   if (axios.isAxiosError(error)) {
     const body = error.response?.data as ApiErrorBody | undefined;
     if (body?.message) {
@@ -41,7 +44,7 @@ export function getApiErrorMessage(error: unknown): string {
       return error.message;
     }
   }
-  return "Something went wrong. Please try again.";
+  return fallback;
 }
 
 /* -------------------------------------------------------------------------- */

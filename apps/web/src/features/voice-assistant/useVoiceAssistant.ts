@@ -150,7 +150,7 @@ export function useVoiceAssistant(options?: UseVoiceAssistantOptions): UseVoiceA
     recognition.interimResults = true;
     recognition.lang = "en-US";
 
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event: SpeechRecognitionEventLike) => {
       let interim = "";
       let finalChunk = "";
       const startIndex = event.resultIndex ?? 0;

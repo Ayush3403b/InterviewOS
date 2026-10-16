@@ -345,7 +345,7 @@ export function ResumeWriterTool({ currentResume }: ResumeWriterToolProps) {
             title: res.targetRole,
             summary: res.summary,
             skills: res.skills,
-            experience: (res.experience || []).map((e: any) => ({
+            experience: (res.experience || []).map((e) => ({
               title: e.title,
               company: e.company,
               duration: e.duration,
@@ -369,7 +369,7 @@ export function ResumeWriterTool({ currentResume }: ResumeWriterToolProps) {
             ...prev,
             summary: res.improvedSummary || prev.summary,
             skills: res.skills || prev.skills,
-            experience: (res.experience || []).map((e: any) => ({
+            experience: (res.experience || []).map((e) => ({
               title: e.title,
               company: e.company,
               duration: e.duration,

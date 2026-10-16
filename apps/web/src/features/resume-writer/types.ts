@@ -72,3 +72,58 @@ export interface ExportResumeDto {
   }>;
   certifications?: string[];
 }
+
+export interface ResumeExperienceEntry {
+  title: string;
+  company: string;
+  duration: string;
+  highlights: string[];
+}
+
+export interface ResumeEducationEntry {
+  degree: string;
+  institution: string;
+  year: string;
+}
+
+export interface ResumeProjectEntry {
+  name: string;
+  description: string;
+  technologies: string[];
+  url?: string;
+  stars?: number;
+}
+
+/** Mirrors GeneratedResumeResultDto - POST /resume-writer/generate. */
+export interface GeneratedResume {
+  fullName: string;
+  targetRole: string;
+  summary: string;
+  skills: string[];
+  atsScore: number;
+  github?: string;
+  linkedin?: string;
+  experience: ResumeExperienceEntry[];
+  education: ResumeEducationEntry[];
+  projects: ResumeProjectEntry[];
+  certifications: string[];
+  atsOptimizationNotes: string[];
+}
+
+/** Mirrors AiOptimizeResumeResultDto - POST /resume-writer/optimize. */
+export interface OptimizedResume {
+  resumeId?: string;
+  originalAtsScore: number;
+  optimizedAtsScore: number;
+  scoreImprovement: number;
+  matchedKeywords: string[];
+  addedKeywords: string[];
+  improvedSummary: string;
+  experience: ResumeExperienceEntry[];
+  skills: string[];
+  projects: ResumeProjectEntry[];
+  education: ResumeEducationEntry[];
+  certifications: string[];
+  enhancementsSummary: string[];
+  mongoUpdated?: boolean;
+}

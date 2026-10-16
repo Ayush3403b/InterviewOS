@@ -75,7 +75,7 @@ export async function compareResumeVersions(
 /** Mirrors PATCH /api/v1/resumes/:id */
 export async function updateResume(
   id: string,
-  updates: Record<string, any>
+  updates: Record<string, unknown>
 ): Promise<ResumeAnalysis> {
   const res = await apiClient.patch<ApiEnvelope<ResumeAnalysis>>(
     `/resumes/${id}`,

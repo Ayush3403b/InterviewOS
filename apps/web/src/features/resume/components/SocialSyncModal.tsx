@@ -2,6 +2,7 @@ import { useState } from "react";
 import { X, Loader2, Sparkles, RefreshCw, AlertCircle, Code2, Globe } from "lucide-react";
 import { importGitHubProfile, importLinkedInProfile } from "../api";
 import type { ResumeAnalysis } from "../types";
+import { getApiErrorMessage } from "../../../lib/apiClient";
 
 interface SocialSyncModalProps {
   isOpen: boolean;
@@ -39,8 +40,8 @@ export function SocialSyncModal({
       });
       onImportSuccess(resume);
       onClose();
-    } catch (err: any) {
-      setError(err?.response?.data?.message || err.message || "Failed to import GitHub profile");
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Failed to import GitHub profile"));
     } finally {
       setIsLoading(false);
     }
@@ -59,8 +60,8 @@ export function SocialSyncModal({
       });
       onImportSuccess(resume);
       onClose();
-    } catch (err: any) {
-      setError(err?.response?.data?.message || err.message || "Failed to import LinkedIn profile");
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Failed to import LinkedIn profile"));
     } finally {
       setIsLoading(false);
     }

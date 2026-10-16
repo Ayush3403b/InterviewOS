@@ -1,4 +1,4 @@
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { X } from "lucide-react";
 
@@ -67,7 +67,7 @@ export function CreateSessionModal({
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     setValue,
     formState: { errors },
   } = useForm<CreateSessionFormValues>({
@@ -80,8 +80,10 @@ export function CreateSessionModal({
     },
   });
 
-  const sectionPlanEnabled = watch("sectionPlanEnabled");
-  const sectionPlan = watch("sectionPlan");
+  // useWatch rather than useForm's watch: it subscribes properly, so the
+  // React Compiler can still optimise this component.
+  const sectionPlanEnabled = useWatch({ control, name: "sectionPlanEnabled" });
+  const sectionPlan = useWatch({ control, name: "sectionPlan" });
   const sectionTotal = sectionPlan
     ? Object.values(sectionPlan).reduce((s, v) => s + (v || 0), 0)
     : 0;

@@ -1,8 +1,10 @@
 import { apiClient } from "../../lib/apiClient";
 import type {
   ExportResumeDto,
+  GeneratedResume,
   GrammarCheckResult,
   JDMatchResult,
+  OptimizedResume,
   RewriteResult,
 } from "./types";
 
@@ -77,8 +79,8 @@ export async function generateAIResume(payload: {
     url?: string;
     stars?: number;
   }>;
-}): Promise<any> {
-  const res = await apiClient.post<ApiEnvelope<any>>(
+}): Promise<GeneratedResume> {
+  const res = await apiClient.post<ApiEnvelope<GeneratedResume>>(
     "/resume-writer/generate",
     payload
   );
@@ -123,8 +125,8 @@ export async function optimizeAIResume(payload: {
   jobDescription?: string;
   targetRole?: string;
   saveToMongo?: boolean;
-}): Promise<any> {
-  const res = await apiClient.post<ApiEnvelope<any>>(
+}): Promise<OptimizedResume> {
+  const res = await apiClient.post<ApiEnvelope<OptimizedResume>>(
     "/resume-writer/optimize",
     payload
   );

@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { X, Sparkles, Loader2, CheckCircle2, TrendingUp, Download, Save, FileText } from "lucide-react";
 import { optimizeAIResume, exportResumePdf } from "../api";
+import type { OptimizedResume } from "../types";
+import { getApiErrorMessage } from "../../../lib/apiClient";
 
 interface AIResumeOptimizerModalProps {
   isOpen: boolean;
   onClose: () => void;
   resumeId?: string;
   initialResumeText?: string;
-  onOptimized?: (result: any) => void;
+  onOptimized?: (result: OptimizedResume) => void;
 }
 
 export function AIResumeOptimizerModal({
@@ -23,7 +25,7 @@ export function AIResumeOptimizerModal({
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [optimizationResult, setOptimizationResult] = useState<any | null>(null);
+  const [optimizationResult, setOptimizationResult] = useState<OptimizedResume | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
@@ -46,8 +48,8 @@ export function AIResumeOptimizerModal({
 
       setOptimizationResult(result);
       if (onOptimized) onOptimized(result);
-    } catch (err: any) {
-      setError(err?.response?.data?.message || err.message || "Failed to optimize resume");
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Failed to optimize resume"));
     } finally {
       setIsLoading(false);
     }
@@ -67,8 +69,8 @@ export function AIResumeOptimizerModal({
         saveToMongo: true,
       });
       setSavedSuccess(true);
-    } catch (err: any) {
-      setError(err?.response?.data?.message || err.message || "Failed to update MongoDB");
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Failed to update MongoDB"));
     } finally {
       setIsSaving(false);
     }
@@ -83,7 +85,7 @@ export function AIResumeOptimizerModal({
         title: targetRole,
         summary: optimizationResult.improvedSummary,
         skills: optimizationResult.skills,
-        experience: (optimizationResult.experience || []).map((exp: any) => ({
+        experience: (optimizationResult.experience || []).map((exp) => ({
           title: exp.title,
           company: exp.company,
           duration: exp.duration,
@@ -102,8 +104,8 @@ export function AIResumeOptimizerModal({
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-    } catch (err: any) {
-      setError(err?.message || "Failed to download PDF");
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Failed to download PDF"));
     } finally {
       setIsExporting(false);
     }
@@ -283,7 +285,7 @@ export function AIResumeOptimizerModal({
                 Upgraded STAR Experience Bullets
               </h4>
               <div className="flex flex-col gap-3">
-                {(optimizationResult.experience || []).map((exp: any, i: number) => (
+                {(optimizationResult.experience || []).map((exp, i) => (
                   <div key={i} className="rounded-lg bg-slate-900/60 p-3 border border-slate-800">
                     <div className="flex items-center justify-between text-xs font-semibold text-white mb-1">
                       <span>{exp.title} • <span className="text-slate-400 font-normal">{exp.company}</span></span>

@@ -146,9 +146,9 @@ export function CodeWorkspace({
         let executableCode = code;
         if (language === "typescript") {
           executableCode = code
-            .replace(/:\s*[A-Za-z0-9_<>\[\]|&]+/g, "")
-            .replace(/interface\s+[A-Za-z0-9_<>\[\]]+\s*\{[\s\S]*?\}/g, "")
-            .replace(/type\s+[A-Za-z0-9_<>\[\]]+\s*=[\s\S]*?;/g, "");
+            .replace(/:\s*[A-Za-z0-9_<>[\]|&]+/g, "")
+            .replace(/interface\s+[A-Za-z0-9_<>[\]]+\s*\{[\s\S]*?\}/g, "")
+            .replace(/type\s+[A-Za-z0-9_<>[\]]+\s*=[\s\S]*?;/g, "");
         }
 
         const runFn = new Function("console", `"use strict";\n${executableCode}`);
