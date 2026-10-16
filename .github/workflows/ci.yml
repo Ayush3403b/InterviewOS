@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  api:
+    name: API - build & test
+    runs-on: ubuntu-latest
+
+    # env.ts requires these to be set to even load - dummy values are
+    # fine here since the unit tests mock out anything that would
+    # actually need a real database/SMTP server. See services/api/.env.example.
+    env:
+      NODE_ENV: test
+      MONGO_URI: mongodb://localhost:27017/interviewos-ci
+      JWT_SECRET: ci-only-placeholder-secret-not-for-real-use-0000
+      JWT_EXPIRES_IN: 15m
+      CLIENT_URL: http://localhost:5173
+      SMTP_HOST: localhost
+      SMTP_PORT: "587"
+      SMTP_USER: ci
+      SMTP_PASS: ci
+      MAIL_FROM: ci@example.com
+      AI_EVALUATION_PROVIDER: mock
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Check route mounting
+        run: node scripts/check-routes.js
+
+      - name: Typecheck (build)
+        run: npm run build --workspace api
+
+      - name: Test
+        run: npm test --workspace api
+
+  web:
+    name: Web - lint & build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint --workspace web
+
+      - name: Test
+        run: npm test --workspace web
+
+      - name: Typecheck + build
+        run: npm run build --workspace web

@@ -1,0 +1,58 @@
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo-staging-data:/data/db
+    ports:
+      - "27018:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - staging-network
+
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ./services/api/.env
+    environment:
+      NODE_ENV: staging
+      MONGO_URI: mongodb://mongo:27017/interviewos-staging
+      PORT: 5000
+      CLIENT_URL: http://staging.interviewos.internal:8080
+      LLM_DAILY_BUDGET_USD: 50.0
+      LLM_MONTHLY_BUDGET_USD: 1000.0
+    ports:
+      - "5001:5000"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - staging-network
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: ""
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    depends_on:
+      - api
+    networks:
+      - staging-network
+
+networks:
+  staging-network:
+    driver: bridge
+
+volumes:
+  mongo-staging-data:

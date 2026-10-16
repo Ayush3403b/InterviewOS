@@ -1,0 +1,52 @@
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    restart: unless-stopped
+    # Real secrets/config live in services/api/.env (copy it from
+    # services/api/.env.example - see that file's comments). Never
+    # commit that .env file or put real secrets in this compose file.
+    env_file:
+      - ./services/api/.env
+    environment:
+      # Overrides whatever's in .env, since "mongo" (the compose
+      # service name) is only resolvable on this network - a local
+      # .env aimed at localhost:27017 wouldn't work from inside the container.
+      MONGO_URI: mongodb://mongo:27017/interviewos
+      PORT: 5000
+    ports:
+      - "5000:5000"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Empty - the SPA calls same-origin "/api/v1/..." and nginx
+        # (see apps/web/nginx.conf) proxies that to the api service.
+        VITE_API_URL: ""
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+
+volumes:
+  mongo-data:

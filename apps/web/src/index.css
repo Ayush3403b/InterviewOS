@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+/*
+  Design tokens for InterviewOS.
+
+  Direction: a calm, precise "instrument panel" - this is a tool
+  people trust with real interviews and hiring decisions, not a
+  marketing site. Cool light surface, ink-navy text, a confident
+  signal-blue for action, a restrained live-green reserved for
+  "verified / active" states only.
+*/
+@theme {
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --color-surface: #f5f6f8;
+  --color-panel: #ffffff;
+  --color-ink: #10161f;
+  --color-ink-soft: #4b5563;
+  --color-line: #e2e5ea;
+
+  --color-signal: #2f6fed;
+  --color-signal-strong: #1d4fc4;
+  --color-live: #12b76a;
+  --color-warn: #d97706;
+  --color-danger: #dc2626;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--color-ink);
+  background: var(--color-surface);
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

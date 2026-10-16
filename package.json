@@ -1,0 +1,31 @@
+{
+  "name": "interviewos",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "apps/*",
+    "services/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace web\" \"npm run dev --workspace api\"",
+    "web": "npm run dev --workspace web",
+    "api": "npm run dev --workspace api",
+    "build": "npm run build --workspaces",
+    "test": "npm test --workspace api && npm test --workspace web",
+    "check:routes": "npm run check:routes --workspace api",
+    "validate:secrets": "node scripts/validate-secrets.js",
+    "seed:demo": "node scripts/seed-demo.js",
+    "clean:demo": "node scripts/clean-demo.js",
+    "backup:db": "node scripts/backup-db.js",
+    "restore:db": "node scripts/restore-db.js",
+    "loadtest:proctoring": "node scripts/load-test-proctoring.js"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  }
+}
